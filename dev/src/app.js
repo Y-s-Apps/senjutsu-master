@@ -187,7 +187,7 @@
     <div class="screen home">
       <div class="h-side">
         <header class="h-top">
-          <h1>サッカー戦術ドリル</h1>
+          <h1>戦術マスター</h1>
           <p class="lead">ボードの状況を読んで次のプレーを選ぶ。選手が動いて、その理由を見せてくれます。</p>
         </header>
         <ul class="key" aria-label="ボードの見方">

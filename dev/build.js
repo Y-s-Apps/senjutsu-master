@@ -40,7 +40,7 @@ const html = `<!doctype html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="戦術ドリル">
+<meta name="apple-mobile-web-app-title" content="戦術マスター">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -56,7 +56,7 @@ ${bodyPart}
 fs.writeFileSync(path.join(ROOT, 'index.html'), html);
 
 // 5) service worker（ページ本体はネット優先＝修正がすぐ届く。オフラインでは保存済みのものを使う）
-const sw = `// サッカー戦術ドリル service worker — version ${ver}（dev/build.js が生成）
+const sw = `// 戦術マスター service worker — version ${ver}（dev/build.js が生成）
 const CACHE = '${APP_ID}-${ver}';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'favicon-32.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
