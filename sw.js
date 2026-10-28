@@ -1,8 +1,8 @@
-// 戦術マスター service worker — version 202610290007（dev/build.js が生成）
-const CACHE = 'senjutsu-drill-202610290007';
+// 戦術マスター service worker — version 202610290043（dev/build.js が生成）
+const CACHE = 'senjutsu-master-202610290043';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'favicon-32.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('senjutsu-drill-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('senjutsu-master-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const url = new URL(req.url);

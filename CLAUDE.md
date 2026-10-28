@@ -1,8 +1,8 @@
 # 戦術マスター — notes for working on this repo
 
 戦術ボードの状況を読んで次のプレーを選び、選手の動きと解説で理由を学ぶサッカー戦術クイズ。初級・中級・上級（指導者向け）×各6問。
-アプリ名は「戦術マスター」（2026-10-29 に「サッカー戦術ドリル」から変更）。リポジトリ名・URL（`senjutsu-drill`）・保存キー・キャッシュ名は旧名のまま（変えるとホーム画面に追加したアプリや自己ベストが引き継がれない）。
-GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-drill/ （`main` ブランチの直下をそのまま配信）
+アプリ名は「戦術マスター」、リポジトリ名と URL は `senjutsu-master`（2026-10-29 に「サッカー戦術ドリル」／`senjutsu-drill` から変更）。自己ベストの保存キー `tacdrill-best-v1` だけは旧名由来のまま（同じドメイン y-s-apps.github.io なので、キーを変えなければブラウザの記録が引き継がれる）。
+GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジトリ `Y-s-Apps/senjutsu-master` の `main` ブランチ直下をそのまま配信）
 作者の個人の GitHub アカウント名は、公開されるファイル・URL・コミットに出さない（組織 Y-s-Apps で公開している）
 同じゲームは Claude のアーティファクトとしても公開している: https://claude.ai/artifact/LvjMNJxWTMbJyGaVZTi5nt
 進め方・ユーザーの好み・経緯・やり残しは `HANDOFF.md`（Claude のプロジェクト機能で開発を続けるためのメモ。プロジェクトの指示の原文もここ）。

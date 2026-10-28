@@ -2,7 +2,7 @@
 
 戦術ボードの状況を読んで次のプレーを選び、選手の動きと解説で理由を学ぶサッカー戦術クイズ（Webアプリ）。初級・中級・上級（指導者向け）の3段階、各6問。
 
-- 遊ぶ: https://y-s-apps.github.io/senjutsu-drill/
+- 遊ぶ: https://y-s-apps.github.io/senjutsu-master/
 - iPhone: Safariで開き、共有ボタン →「ホーム画面に追加」
 - Android: Chromeで開き、メニュー →「ホーム画面に追加」／「アプリをインストール」
 

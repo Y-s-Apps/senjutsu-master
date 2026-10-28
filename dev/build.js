@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const APP_ID = 'senjutsu-drill'; // キャッシュ名の接頭辞
+const APP_ID = 'senjutsu-master'; // キャッシュ名の接頭辞
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(__dirname, 'src');
 const read = f => fs.readFileSync(path.join(SRC, f), 'utf8');

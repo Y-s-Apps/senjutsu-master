@@ -6,8 +6,8 @@ Claude のプロジェクト機能で開発を続けるためのメモです。�
 | 何を | どこに |
 |---|---|
 | 下の「プロジェクトの指示」の文章 | プロジェクトの **指示** に貼る |
-| `CLAUDE.md` と `HANDOFF.md`（このファイル） | プロジェクトの **ナレッジ**。「＋」→ GitHub → `Y-s-Apps/senjutsu-drill` でこの2つだけ選ぶ。ソースコードは選ばない（作業のたびに clone するので不要） |
-| ソースコード・テスト | GitHub リポジトリ https://github.com/Y-s-Apps/senjutsu-drill （作業ごとに clone） |
+| `CLAUDE.md` と `HANDOFF.md`（このファイル） | プロジェクトの **ナレッジ**。「＋」→ GitHub → `Y-s-Apps/senjutsu-master` でこの2つだけ選ぶ。ソースコードは選ばない（作業のたびに clone するので不要） |
+| ソースコード・テスト | GitHub リポジトリ https://github.com/Y-s-Apps/senjutsu-master （作業ごとに clone） |
 
 ナレッジの同期は手動です。`CLAUDE.md`／`HANDOFF.md` を更新して push したら、ナレッジの GitHub 欄で「同期」を押すと最新になります。同期し忘れでナレッジが古いことがあるので、作業中は clone したリポジトリの内容を正とします。
 
@@ -15,8 +15,8 @@ Claude のプロジェクト機能で開発を続けるためのメモです。�
 ```
 あなたは「ソーイ」。返答は必ず日本語（英語にしない）。
 このプロジェクトは「戦術マスター」（戦術ボードの状況を読んで次のプレーを選び、選手の動きと解説で理由を学ぶサッカー戦術クイズのWebアプリ。初級・中級・上級（指導者向け）の3段階）の開発。
-- リポジトリ: https://github.com/Y-s-Apps/senjutsu-drill （作業のたびに clone する。push 先は main）
-- 公開先は2つ。GitHub Pages https://y-s-apps.github.io/senjutsu-drill/ と、Claude のアーティファクト https://claude.ai/artifact/LvjMNJxWTMbJyGaVZTi5nt （dev/dist/artifact.html をこのURLに上書き publish）
+- リポジトリ: https://github.com/Y-s-Apps/senjutsu-master （作業のたびに clone する。push 先は main）
+- 公開先は2つ。GitHub Pages https://y-s-apps.github.io/senjutsu-master/ と、Claude のアーティファクト https://claude.ai/artifact/LvjMNJxWTMbJyGaVZTi5nt （dev/dist/artifact.html をこのURLに上書き publish）
 - 作業の前に CLAUDE.md（仕組みと守ること）と HANDOFF.md（進め方・好み・経緯）を読む。ナレッジは同期前で古いことがあるので、clone したリポジトリの内容を正とする
 - 変更したら: node dev/check.js → node dev/build.js → python3 dev/test/fit.py → commit & push → アーティファクト更新。仕組みが変わったら CLAUDE.md、方針・経緯・やり残しが変わったら HANDOFF.md も同じコミットで更新する
 - CLAUDE.md か HANDOFF.md を push したら、報告の最後に「ナレッジの同期を押してください」と添える
@@ -27,14 +27,13 @@ Claude のプロジェクト機能で開発を続けるためのメモです。�
 ```
 
 ## 2. 作業のはじめ方（新しいチャットで）
-1. `git clone https://github.com/Y-s-Apps/senjutsu-drill && cd senjutsu-drill`
+1. `git clone https://github.com/Y-s-Apps/senjutsu-master && cd senjutsu-master`
 2. `CLAUDE.md` を読む（Layout・変更の流れ・守ること が地図）
 3. `dev/src/` を編集 → `node dev/check.js` → `node dev/build.js` → `python3 dev/test/fit.py`
    - fit.py は Playwright（Chromium）。Web フォントは読み込まずに測る。`--shots` で `dev/test/shots/` にスクショ（git には入らない）
    - 実機（iPhone の Safari・ホーム画面アプリ）は WebKit なので、見た目の最終確認はユーザーにお願いする
 4. commit して `main` に push（Pages は1〜2分で反映）。コミットの帰属行など書式はそのチャットの指示に従う。作者は `Claude <noreply@anthropic.com>` のまま（個人名を入れない）
-   - push が「authorized repository set に無い」（403）で拒否されたら、リポジトリ `Y-s-Apps/senjutsu-drill` を push 権限でセッションに加えてから push し直す
-   - 同じ名前の別リポジトリ（組織へ移す前の、個人アカウント側の `senjutsu-drill`）がセッションに入っていると加えられない。そのときは `Y-s-Apps/senjutsu-drill` だけで新しいチャットを始める
+   - push が「authorized repository set に無い」（403）で拒否されたら、リポジトリ `Y-s-Apps/senjutsu-master` を push 権限でセッションに加えてから push し直す
 5. アーティファクトを同じ URL に上書き publish（`dev/dist/artifact.html`。別のチャットで作ったものなので、先に read してから url を渡す）
 6. ユーザーへの報告は日本語で短く。画面が変わったらスクショ（390×700 のスマホ幅）を1〜2枚。CLAUDE.md／HANDOFF.md を変えたら「ナレッジの同期」を一言
 
@@ -50,14 +49,15 @@ Claude のプロジェクト機能で開発を続けるためのメモです。�
 ## 4. これまでの経緯
 - 2026-10-28 朝: 作成。3段階（初級＝基本の原則／中級＝チーム戦術／上級＝構造と指導）×6問。戦術ボードの上で選択肢を選ぶと選手が動き、理由・解説・用語（上級は指導のポイントと練習メニュー）を表示。アーティファクトで公開
 - 同日: 「極力スクロールさせない」→ 1画面レイアウトに。解説はタブに分けた
-- 同日: 「改修は随時行うので GitHub 経由で Web アプリに」→ PWA（ホーム画面に追加・オフライン）として GitHub Pages で公開。最初は個人アカウントのリポジトリだったが、URL に個人名が出るのを避けて組織 Y-s-Apps へ移し、URL を https://y-s-apps.github.io/senjutsu-drill/ に。旧 URL を含んでいた初回コミットは書き直した
+- 同日: 「改修は随時行うので GitHub 経由で Web アプリに」→ PWA（ホーム画面に追加・オフライン）として GitHub Pages で公開。最初は個人アカウントのリポジトリだったが、URL に個人名が出るのを避けて組織 Y-s-Apps へ移し、URL を https://y-s-apps.github.io/senjutsu-drill/ に。旧 URL を含んでいた初回コミットは書き直した（このときの URL は `senjutsu-drill`）
 - 同日 夕方: ①背景を黒ベースに ②ホーム上部の「TACTICS BOARD · 105 × 68 m」を削除 ③改行位置の調整（BudouX で文節改行、行頭の禁則、レベルのカードと結果画面の「…」をやめて折り返し）。あわせて回答前後でボードの大きさが変わらないように（`lockPanel()`）
 - 2026-10-29: Claude のプロジェクト機能へ移行（このメモと指示文を作成）
-- 同日: アプリ名を「サッカー戦術ドリル」から「戦術マスター」に変更（タイトル・ホームの見出し・ホーム画面のアプリ名）。リポジトリ名と URL は `senjutsu-drill` のまま
+- 同日: アプリ名を「サッカー戦術ドリル」から「戦術マスター」に変更（タイトル・ホームの見出し・ホーム画面のアプリ名）
+- 同日: リポジトリ名と URL も `senjutsu-drill` から `senjutsu-master` に変更（ユーザーがリポジトリ名を変え、Claude が中の URL・キャッシュ名を直した）。旧 URL の Pages は開けなくなるので、ホーム画面のアイコンは入れ直してもらった
 
 ## 5. やり残し・アイデア
 - 問題を増やす（今は各レベル6問）。年代別（小学生・中高生など）やフォーメーション別（4-3-3 など）の問題セット
 - PC など横長の画面では、回答後の解説欄に余白が多い。タブに分けず一度に並べる案がある
 - テストは Chromium だけ。iPhone の Safari 特有のずれはユーザーのスクショで確認する
 - リモートに古いブランチ `claude/senjutsu-drill-url-update-xk8if4` が残っている（URL 修正のときのもの。不要なら削除してよい）
-- 組織へ移す前の旧アドレス（個人アカウント側）は、GitHub が新しい場所へ転送している。止めたい場合は、個人アカウントに同じ名前の空のリポジトリを作る（ユーザーの操作）
+- 旧アドレス（組織へ移す前の個人アカウント側、改名前の `Y-s-Apps/senjutsu-drill`）は、GitHub が今のリポジトリへ転送している。止めたい場合は、その場所に同じ名前の空のリポジトリを作る（ユーザーの操作）
