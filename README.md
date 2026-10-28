@@ -8,10 +8,13 @@
 
 自己ベストはその端末の中に保存されます。一度開けば、オフラインでも遊べます。
 
-同梱ライブラリ: BudouX 0.6.4（Apache License 2.0, Google LLC）— 日本語の改行位置の調整に使用
+外部のサービスへは通信しません（フォントも同じサイトから配信しています）。
+
+同梱しているもの: BudouX 0.6.4（Apache License 2.0, Google LLC）— 日本語の改行位置の調整に使用。フォントは Dela Gothic One・Zen Kaku Gothic New・IBM Plex Mono（SIL Open Font License 1.1）のサブセット。ライセンス本文は `licenses/` にあります。
 
 ## 中身
 
 - `dev/src/` … アプリのもとになるファイル（問題データは `data1.js`〜`data3.js`）
 - `node dev/build.js` … 公開用の `index.html` と `sw.js` を組み立てます（直下のこの2つは手で編集しません）
 - `node dev/check.js` … 問題データの確認
+- `python3 dev/fonts/make_fonts.py` … アプリで使う文字だけのフォント（`fonts/`）を作り直します

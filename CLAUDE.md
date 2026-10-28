@@ -13,9 +13,11 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - `dev/src/page.html` — CSS とページ骨格（アーティファクトの書き方: doctype/html/head/body なし、先頭に `<title>`）。
 - `dev/src/app.js` — 画面・ピッチ描画・アニメーション・採点・改行処理（`phrase()`）。`dev/src/data1.js`〜`data3.js` — 問題データ（Lv.1〜3）。
 - `dev/src/budoux.js` — BudouX 0.6.4（Apache-2.0）の日本語パーサを1ファイルにまとめたもの。改行位置を決めるためだけに使う。手で編集しない。
-- `dev/build.js` — script をインライン化して、直下の `index.html`（PWA 用 head と service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html` を書き出す。
+- `dev/build.js` — script をインライン化して、直下の `index.html`（PWA 用 head・CSP・service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html`（フォントを data: で埋め込んだ1ファイル）を書き出す。ソースに `fonts/` にない文字が出てきたらビルドを止めるので、`python3 dev/fonts/make_fonts.py` を実行してからビルドし直す（要 `pip install fonttools brotli`）。
 - `dev/check.js` — 問題データの確認（型・ID・ベストの数・座標など。誤りがあれば終了コード 1）。
-- `dev/test/fit.py` — Playwright で全18問・全タブを開き、1画面に収まっているか（縦横どちらもスクロールなし）と、行頭に助詞・句読点・閉じ括弧が来ていないかを確認（`--shots` でスクショ）。
+- `dev/test/fit.py` — Playwright でローカルの Web サーバーから開き（`fonts/` の実フォントで測る）、全18問・全タブについて、1画面に収まっているか（縦横どちらもスクロールなし）、行頭に助詞・句読点・閉じ括弧が来ていないか、外部への通信・CSP 違反がないか、フォントが読み込めたかを確認（`--shots` でスクショ）。
+- `fonts/` — アプリで使う文字だけを収めたフォント（woff2）。`dev/fonts/make_fonts.py` が google/fonts の決まったコミットから元のフォントを取り（SHA-256 を確認、`dev/fonts/.cache/` は git に入れない）、サブセットを作る。作った文字の一覧は `dev/fonts/chars.txt`。内部名は TM Display / TM Gothic / TM Mono（IBM Plex の予約フォント名「Plex」を使わないため）。手で編集しない。
+- `licenses/` — 同梱している BudouX（Apache-2.0）とフォント（OFL 1.1）のライセンス本文。
 
 ## 変更の流れ
 1. `dev/src/` を編集
@@ -41,5 +43,6 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - **配色は黒ベースの1テーマ**（ユーザーの指定）。端末のライト/ダーク設定に合わせて変えない。色はすべて `page.html` 冒頭の `:root` トークンから取り、ライト用の定義は作らない。manifest・theme-color（`dev/build.js`）も同じ `#0E1310`。
 - **改行位置に気をつける**（ユーザーの指定）。日本語は文節の境目でだけ折り返す: body は `word-break: keep-all`、描画後に `phrase()` が BudouX で文節の間に `<wbr>` を入れ、助詞などで始まる文節は前につなげ、閉じ括弧の直後は U+2060 でつなぐ。innerHTML で文を差し込んだら、その要素に `phrase()` をかける。1行のラベルは `white-space: nowrap`（`phrase()` は nowrap の要素を飛ばす）。見出しとリード文は `text-wrap: balance`、本文は `pretty`。「…」で省略せず、折り返して収める。
 - 自己ベストは localStorage（キー `tacdrill-best-v1`）。キーを変えると記録が消える。同じドメイン y-s-apps.github.io の組織のほかの Pages からも読み書きできるので、`loadBest()` は「知っているレベルの id と 0〜満点の整数」だけを残し、それ以外は捨てる。
+- **外部へ通信しない**。フォントは `fonts/`、script はすべてインライン。`index.html` の CSP（`dev/build.js` が作る `<meta>`）は外部への通信をすべて禁止し、script は埋め込んだもののハッシュだけを許す。外部の URL を読み込むと、ビルドが止まり（page.html）、`fit.py` も失敗する。GitHub Pages はヘッダーを設定できないので、`frame-ancestors` などヘッダーでしか効かない指定は使えない。アーティファクトはホスト側の仕組みがあるので CSP を入れない。
 - **innerHTML に差し込む文は `esc()` を通す**（問題データ・自己ベストを含めてすべて）。座標・点数・記号 A/B/C はそのまま SVG や class に入るので、`dev/check.js` がデータの型（文は文字列、座標は数値、記号は A/B/C の順）を確かめる。HTML のタグを文に書かない。
 - コミットの末尾に付ける行は、そのセッションで指示されたものに従う。

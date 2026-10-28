@@ -1,17 +1,35 @@
 """1画面に収まっているかの確認:  python3 dev/test/fit.py [--shots]
 
-ビルド済みの index.html を開き、全18問を回答して、全タブの中身を表示する。
+ビルド済みの index.html をローカルの Web サーバーから開き（fonts/ の実フォントで測る）、全18問を回答して、全タブの中身を表示する。
 - ページ全体がスクロールする            → 失敗
 - 回答前のパネルがはみ出す              → 失敗
 - 390x700 でタブの中身がはみ出す        → 失敗（360x620 では注意だけ）
+- 外部（自分のサイト以外）へ通信する    → 失敗
+- CSP に止められたものがある            → 失敗
+- fonts/ のフォントが読み込めない       → 失敗
 --shots を付けると dev/test/shots/ にスクリーンショットを保存する。
 必要なもの: pip install playwright && playwright install chromium
 """
+import functools
+import http.server
 import pathlib
 import sys
+import threading
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
+class Quiet(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+
+server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=str(ROOT)))
+threading.Thread(target=server.serve_forever, daemon=True).start()
+BASE = f'http://127.0.0.1:{server.server_port}/'
+FONTS = """async () => { await document.fonts.ready;
+  return [...document.fonts].filter(f => f.status === 'loaded').map(f => f.family.replace(/"/g, '') + ' ' + f.weight); }"""
 SHOTS = ROOT / 'dev' / 'test' / 'shots'
 TAKE = '--shots' in sys.argv
 OV = """() => { const r = {}; const d = document.documentElement;
@@ -53,7 +71,8 @@ def shot(pg, name):
 
 
 def run(pg, tag, strict):
-    pg.goto((ROOT / 'index.html').as_uri())
+    pg.goto(BASE + 'index.html')
+    loaded.update(pg.evaluate(FONTS))
     r = pg.evaluate(OV)
     if r['page'] > 0:
         fails.append((tag, 'home', r))
@@ -93,21 +112,28 @@ def run(pg, tag, strict):
         if lv == 2:
             shot(pg, f'{tag}-result')
         pg.click('#toHome')
+    loaded.update(pg.evaluate(FONTS))
 
 
+loaded = set()
 with sync_playwright() as p:
     browser = p.chromium.launch()
     errors = []
     for tag, w, h, scheme, strict in SIZES:
         pg = browser.new_page(viewport={'width': w, 'height': h}, color_scheme=scheme)
         pg.on('pageerror', lambda e: errors.append(str(e)))
-        pg.route('**/fonts.*/**', lambda r: r.abort())  # 実フォントなしでも測れるようにする
+        pg.on('console', lambda m: errors.append(f'CSP: {m.text}') if 'Content Security Policy' in m.text else None)
+        pg.route('**/*', lambda r: (errors.append(f'外部への通信: {r.request.url}'), r.abort()) if not r.request.url.startswith(BASE) else r.continue_())
         run(pg, tag, strict)
     browser.close()
+server.shutdown()
 
 for tag, x in sorted(bad_breaks):
     print('  break', tag, x)
 fails += [('break', t, x) for t, x in bad_breaks if t == 'phone']
+need = {'TM Display 400', 'TM Gothic 400', 'TM Gothic 700', 'TM Mono 600'}
+if not need <= loaded:
+    fails.append(('fonts', '読み込めなかったフォント', sorted(need - loaded)))
 for f in fails:
     print('FAIL', *f)
 for e in errors:

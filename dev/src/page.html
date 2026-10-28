@@ -1,9 +1,15 @@
 <title>戦術マスター</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=IBM+Plex+Mono:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
+/* フォント: Dela Gothic One・Zen Kaku Gothic New・IBM Plex Mono（いずれも SIL OFL 1.1、licenses/ を参照）から、
+   アプリで使う文字だけを収めたサブセット。dev/fonts/make_fonts.py が fonts/ に作る。外部（Google Fonts）へは通信しない */
+@font-face { font-family: "TM Display"; src: url("fonts/tm-display-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "TM Gothic"; src: url("fonts/tm-gothic-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "TM Gothic"; src: url("fonts/tm-gothic-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "TM Gothic"; src: url("fonts/tm-gothic-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "TM Mono"; src: url("fonts/tm-mono-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "TM Mono"; src: url("fonts/tm-mono-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+
 /* レイアウト: 1画面完結。戦術ボード（枠付きピッチ＋マグネット）が残りの高さを埋め、問題とフィードバックは下（横長なら右）のパネルにタブで収める */
 /* 配色: 黒ベースの1テーマ（ユーザーの指定）。端末のライト/ダーク設定にかかわらず同じ見た目 */
 :root {
@@ -14,9 +20,9 @@
   --grass: #1E5634; --grass-2: #1A4D2E; --chalk: rgba(228, 239, 230, .78);
   --home: #3F6DF5; --away: #EE4A3B; --pen: #FFD43B; --pen-ink: #1B1A10;
   --p-good: #8DF7B8; --p-bad: #FF8B7B; --pen-mark: #FFD43B; --hl: rgba(255, 212, 59, .3);
-  --f-disp: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
-  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --f-disp: "TM Display", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --f-body: "TM Gothic", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --f-mono: "TM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   color-scheme: dark;
 }
 
