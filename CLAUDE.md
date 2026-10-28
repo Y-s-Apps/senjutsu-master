@@ -14,7 +14,7 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - `dev/src/app.js` — 画面・ピッチ描画・アニメーション・採点・改行処理（`phrase()`）。`dev/src/data1.js`〜`data3.js` — 問題データ（Lv.1〜3）。
 - `dev/src/budoux.js` — BudouX 0.6.4（Apache-2.0）の日本語パーサを1ファイルにまとめたもの。改行位置を決めるためだけに使う。手で編集しない。
 - `dev/build.js` — script をインライン化して、直下の `index.html`（PWA 用 head と service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html` を書き出す。
-- `dev/check.js` — 問題データの確認（誤りがあれば終了コード 1）。
+- `dev/check.js` — 問題データの確認（型・ID・ベストの数・座標など。誤りがあれば終了コード 1）。
 - `dev/test/fit.py` — Playwright で全18問・全タブを開き、1画面に収まっているか（縦横どちらもスクロールなし）と、行頭に助詞・句読点・閉じ括弧が来ていないかを確認（`--shots` でスクショ）。
 
 ## 変更の流れ
@@ -40,5 +40,6 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - 戦術に唯一の正解はない、という立場。「悪くない」選択肢には、それが有効になる状況も書く。
 - **配色は黒ベースの1テーマ**（ユーザーの指定）。端末のライト/ダーク設定に合わせて変えない。色はすべて `page.html` 冒頭の `:root` トークンから取り、ライト用の定義は作らない。manifest・theme-color（`dev/build.js`）も同じ `#0E1310`。
 - **改行位置に気をつける**（ユーザーの指定）。日本語は文節の境目でだけ折り返す: body は `word-break: keep-all`、描画後に `phrase()` が BudouX で文節の間に `<wbr>` を入れ、助詞などで始まる文節は前につなげ、閉じ括弧の直後は U+2060 でつなぐ。innerHTML で文を差し込んだら、その要素に `phrase()` をかける。1行のラベルは `white-space: nowrap`（`phrase()` は nowrap の要素を飛ばす）。見出しとリード文は `text-wrap: balance`、本文は `pretty`。「…」で省略せず、折り返して収める。
-- 自己ベストは localStorage（キー `tacdrill-best-v1`）。キーを変えると記録が消える。
+- 自己ベストは localStorage（キー `tacdrill-best-v1`）。キーを変えると記録が消える。同じドメイン y-s-apps.github.io の組織のほかの Pages からも読み書きできるので、`loadBest()` は「知っているレベルの id と 0〜満点の整数」だけを残し、それ以外は捨てる。
+- **innerHTML に差し込む文は `esc()` を通す**（問題データ・自己ベストを含めてすべて）。座標・点数・記号 A/B/C はそのまま SVG や class に入るので、`dev/check.js` がデータの型（文は文字列、座標は数値、記号は A/B/C の順）を確かめる。HTML のタグを文に書かない。
 - コミットの末尾に付ける行は、そのセッションで指示されたものに従う。

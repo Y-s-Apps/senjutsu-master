@@ -12,6 +12,49 @@ const err = (...a) => { errors++; console.log('ERROR', ...a); };
 const note = (...a) => console.log('  note', ...a);
 const PH = ['atk', 'def', 'tr', 'coach'];
 
+// 型の確認: 文は文字列、座標・点数は数値、記号は A/B/C。
+// app.js は文を esc() してから差し込み、座標・点数・記号はそのまま SVG や class に入れるので、ここで型を守る。
+const num = v => typeof v === 'number' && Number.isFinite(v);
+const pt = v => Array.isArray(v) && v.length === 2 && v.every(num);
+const str = v => typeof v === 'string' && v.length > 0;
+const ids = new Set();
+L.forEach((lv, li) => {
+  const tag = `L${li + 1}`;
+  if (!/^[a-z]+$/.test(lv.id) || ids.has(lv.id)) err(tag, 'id は英小文字で重複なし', lv.id);
+  ids.add(lv.id);
+  if (lv.no !== li + 1) err(tag, 'no は', li + 1);
+  for (const k of ['name', 'title', 'who']) if (!str(lv[k])) err(tag, k, 'は文字列');
+  if (lv.feat != null && typeof lv.feat !== 'string') err(tag, 'feat は文字列（なしなら空）');
+  lv.q.forEach((q, qi) => {
+    const t = `${tag}Q${qi + 1}`;
+    for (const k of ['t', 's', 'q', 'ex']) if (q[k] != null && !str(q[k])) err(t, k, 'は文字列');
+    for (const k of ['hint', 'coach', 'drill']) if (q[k] != null && !str(q[k])) err(t, k, 'は文字列');
+    if (!Array.isArray(q.key) || q.key.length !== 2 || !q.key.every(str)) err(t, 'key は [用語, 説明]');
+    if (!Array.isArray(q.view) || q.view.length !== 4 || !q.view.every(num)) err(t, 'view は数値4つ');
+    if (!pt(q.ball)) err(t, 'ball は [x, y]');
+    if (q.line != null && !num(q.line)) err(t, 'line は数値');
+    if (q.me != null && !/^[ha]\d+$/.test(q.me)) err(t, 'me は h6 などの形');
+    [...(q.h || []), ...(q.a || [])].forEach(p => {
+      if (!Array.isArray(p) || p.length !== 3 || !p.every(num) || !Number.isInteger(p[0])) err(t, '選手は [背番号, x, y]', p);
+    });
+    const ks = (q.opts || []).map(o => o.k);
+    if (ks.join('') !== 'ABC'.slice(0, ks.length) || ks.length < 2) err(t, '記号は A, B, C の順', ks.join(''));
+    (q.opts || []).forEach(o => {
+      if (![0, 1, 2].includes(o.sc)) err(t, o.k, 'sc は 0/1/2');
+      if (!str(o.l) || !str(o.why)) err(t, o.k, 'l・why は文字列');
+      if (o.mk != null && !pt(o.mk)) err(t, o.k, 'mk は [x, y]');
+      if (o.at != null && !pt(o.at)) err(t, o.k, 'at は [x, y]');
+      (o.ar || []).forEach(a => {
+        if (!pt(a[0]) || !pt(a[1]) || (a[3] != null && !pt(a[3]))) err(t, o.k, '矢印の座標', a);
+      });
+    });
+    (q.play || []).forEach(st => {
+      Object.entries(st.m || {}).forEach(([id, p]) => { if (!/^[ha]\d+$/.test(id) || !pt(p)) err(t, 'play の形', id, p); });
+      if (st.b != null && !pt(st.b)) err(t, 'play のボール', st.b);
+    });
+  });
+});
+
 L.forEach((lv, li) => lv.q.forEach((q, qi) => {
   const tag = `L${li + 1}Q${qi + 1}`;
   for (const k of ['t', 'ph', 'view', 'h', 'a', 'ball', 's', 'q', 'opts', 'play', 'ex', 'key']) if (q[k] == null) err(tag, 'missing', k);

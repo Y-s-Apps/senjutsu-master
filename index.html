@@ -733,7 +733,22 @@ window.LEVELS[2] = {
   const f = n => Math.round(n * 100) / 100;
   const maxOf = L => L.q.length * 2;
   const cur = () => LV[S.lv].q[S.qi];
-  const loadBest = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
+  // 画面へ差し込む文字はすべて esc() を通す（問題データは自前だが、念のため HTML として解釈させない）。
+  const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  // 自己ベストは同じドメイン（y-s-apps.github.io）のほかのページからも書き換えられるので、
+  // 読むときに「知っているレベルの id と、0〜満点の整数」だけを残す。壊れた値は捨てる。
+  const loadBest = () => {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(KEY)); } catch (e) { raw = null; }
+    const out = {};
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      LV.forEach(L => {
+        const v = raw[L.id];
+        if (Number.isInteger(v) && v >= 0 && v <= maxOf(L)) out[L.id] = v;
+      });
+    }
+    return out;
+  };
   const saveBest = o => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* 保存できない環境では無視 */ } };
   const total = () => S.ans.reduce((a, x) => a + (x ? x.sc : 0), 0);
 
@@ -805,8 +820,8 @@ window.LEVELS[2] = {
     (o.ar || []).forEach((a, i) => { const r = arrow(a); g += r.svg; if (!at && i === 0) at = r.tip; });
     if (o.mk) { g += `<circle class="ring" cx="${o.mk[0]}" cy="${o.mk[1]}" r="2.5"/>`; if (!at) at = o.mk; }
     if (!at) return '';
-    g += `<g class="bdg" transform="translate(${f(at[0])} ${f(at[1])})"><circle class="hit" r="3.4"/><circle r="1.75"/><text y=".7">${o.k}</text></g>`;
-    return `<g class="og" data-k="${o.k}">${g}</g>`;
+    g += `<g class="bdg" transform="translate(${f(at[0])} ${f(at[1])})"><circle class="hit" r="3.4"/><circle r="1.75"/><text y=".7">${esc(o.k)}</text></g>`;
+    return `<g class="og" data-k="${esc(o.k)}">${g}</g>`;
   }
 
   function players(s) {
@@ -923,10 +938,10 @@ window.LEVELS[2] = {
       <nav class="levels" aria-label="レベルを選ぶ">
         ${LV.map((L, i) => {
           const b = best[L.id];
-          return `<button class="lv" data-start="${i}" aria-label="Lv.${L.no} ${L.name} ${L.title}">
-            <span class="lv-head"><span class="pips" aria-hidden="true">${pips(L.no)}</span><span class="lv-name">${L.name}</span><span class="lv-title">${L.title}</span><span class="lv-best">最高<b>${b == null ? '—' : b}</b>/${maxOf(L)}</span></span>
-            <span class="lv-who">${L.who}向け${L.feat ? `<span class="lv-tag">${L.feat}</span>` : ''}</span>
-            <span class="lv-topics">${L.q.map(q => `<span>${q.key[0].replace(/（.*?）/, '')}</span>`).join(' ')}</span>
+          return `<button class="lv" data-start="${i}" aria-label="Lv.${esc(L.no)} ${esc(L.name)} ${esc(L.title)}">
+            <span class="lv-head"><span class="pips" aria-hidden="true">${pips(L.no)}</span><span class="lv-name">${esc(L.name)}</span><span class="lv-title">${esc(L.title)}</span><span class="lv-best">最高<b>${b == null ? '—' : esc(b)}</b>/${maxOf(L)}</span></span>
+            <span class="lv-who">${esc(L.who)}向け${L.feat ? `<span class="lv-tag">${esc(L.feat)}</span>` : ''}</span>
+            <span class="lv-topics">${L.q.map(q => `<span>${esc(q.key[0].replace(/（.*?）/, ''))}</span>`).join(' ')}</span>
           </button>`;
         }).join('')}
       </nav>
@@ -949,7 +964,7 @@ window.LEVELS[2] = {
     <div class="screen play">
       <nav class="bar">
         <button class="link back" id="back" aria-label="レベル選択へ戻る">←</button>
-        <span class="bar-lv">Lv.${L.no} ${L.name}</span>
+        <span class="bar-lv">Lv.${esc(L.no)} ${esc(L.name)}</span>
         <ol class="dots" aria-hidden="true">${dots()}</ol>
         <span class="bar-q">${S.qi + 1}<small>/${L.q.length}</small></span>
         <span class="bar-pt"><b id="pt">${total()}</b>点</span>
@@ -959,19 +974,19 @@ window.LEVELS[2] = {
           <div class="board" id="board" style="--ar:${f(v[2] / v[3])}">${pitchSVG(s)}
             <span class="dir">攻撃 ↑</span>
             <span class="stamp" id="stamp" hidden></span>
-            ${s.hint ? `<p class="hint-cap" id="hint" hidden>ヒント：${s.hint}</p>` : ''}
+            ${s.hint ? `<p class="hint-cap" id="hint" hidden>ヒント：${esc(s.hint)}</p>` : ''}
           </div>
         </div>
         <section class="panel" id="panel">
           <div class="qhead">
             <span class="phase ph-${s.ph}">${PH[s.ph]}</span>
-            <h2 class="qt">${s.t}</h2>
+            <h2 class="qt">${esc(s.t)}</h2>
             ${s.hint ? '<button class="hint-btn" id="hintBtn" aria-pressed="false">ヒント</button>' : ''}
           </div>
-          <p class="sit">${s.s}</p>
-          <p class="qq">${s.q}</p>
+          <p class="sit">${esc(s.s)}</p>
+          <p class="qq">${esc(s.q)}</p>
           <div class="opts" role="group" aria-label="選択肢">
-            ${s.opts.map(o => `<button class="opt" data-k="${o.k}"><span class="k">${o.k}</span><span class="l">${o.l}</span></button>`).join('')}
+            ${s.opts.map(o => `<button class="opt" data-k="${esc(o.k)}"><span class="k">${esc(o.k)}</span><span class="l">${esc(o.l)}</span></button>`).join('')}
           </div>
         </section>
       </div>
@@ -1026,14 +1041,14 @@ window.LEVELS[2] = {
     const s = cur();
     const o = s.opts.find(x => x.k === k);
     const best = bestOf(s);
-    const line = (x, tag) => `<p class="oline c${x.sc}"><span class="k k${x.sc}">${x.k}</span><span>${tag}${x.l}</span></p><p>${x.why}</p>`;
+    const line = (x, tag) => `<p class="oline c${x.sc}"><span class="k k${x.sc}">${esc(x.k)}</span><span>${tag}${esc(x.l)}</span></p><p>${esc(x.why)}</p>`;
     switch (id) {
       case 'why':
         return line(o, 'あなたの選択：') + (o.k !== best.k ? line(best, 'ベスト：') : '');
-      case 'ex': return `<p>${s.ex}</p>`;
-      case 'key': return `<p class="term"><b class="hl">${s.key[0]}</b></p><p>${s.key[1]}</p>`;
-      case 'coach': return `<p>${s.coach}</p>`;
-      case 'drill': return `<p>${s.drill}</p>`;
+      case 'ex': return `<p>${esc(s.ex)}</p>`;
+      case 'key': return `<p class="term"><b class="hl">${esc(s.key[0])}</b></p><p>${esc(s.key[1])}</p>`;
+      case 'coach': return `<p>${esc(s.coach)}</p>`;
+      case 'drill': return `<p>${esc(s.drill)}</p>`;
       case 'rest': return s.opts.filter(x => x.k !== o.k && x.k !== best.k).map(x => line(x, `${RES[x.sc]}：`)).join('');
     }
     return '';
@@ -1092,19 +1107,19 @@ window.LEVELS[2] = {
     app.innerHTML = `
     <div class="screen result">
       <div class="r-head">
-        <p class="eyebrow">Lv.${L.no} ${L.name} · ${L.title}</p>
+        <p class="eyebrow">Lv.${esc(L.no)} ${esc(L.name)} · ${esc(L.title)}</p>
         <div class="score"><b>${sc}</b><span>/ ${mx}</span>${isNew ? '<em>自己ベスト</em>' : ''}</div>
         <p class="msg">${msg}</p>
       </div>
       <ol class="rlist">
         ${L.q.map((q, i) => {
           const a = S.ans[i] || { sc: 0 };
-          return `<li><span class="chip c${a.sc}">${RES[a.sc]}</span><span class="rt"><b>${q.t}</b><small>${q.key[0]}</small></span></li>`;
+          return `<li><span class="chip c${a.sc}">${RES[a.sc]}</span><span class="rt"><b>${esc(q.t)}</b><small>${esc(q.key[0])}</small></span></li>`;
         }).join('')}
       </ol>
       <div class="acts">
         <button class="btn ghost" id="retry">もう一度</button>
-        ${S.lv < LV.length - 1 ? `<button class="btn" id="nextLv">Lv.${L.no + 1} ${LV[S.lv + 1].name}へ →</button>` : ''}
+        ${S.lv < LV.length - 1 ? `<button class="btn" id="nextLv">Lv.${esc(L.no + 1)} ${esc(LV[S.lv + 1].name)}へ →</button>` : ''}
         <button class="btn ghost" id="toHome">レベル選択</button>
       </div>
     </div>`;
