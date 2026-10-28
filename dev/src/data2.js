@@ -2,7 +2,7 @@
 window.LEVELS = window.LEVELS || [];
 window.LEVELS[1] = {
   id: 'team', no: 2, name: '中級', title: 'チーム戦術',
-  who: '経験のある選手・中高生', feat: 'ほかの選択肢の評価つき',
+  who: '経験のある選手・中高生', feat: '',
   q: [
     {
       t: '縦パスのコースがない', ph: 'atk', me: 'h4', view: [-2, 16, 72, 58],

@@ -1,5 +1,5 @@
-// サッカー戦術ドリル service worker — version 202610280954（dev/build.js が生成）
-const CACHE = 'senjutsu-drill-202610280954';
+// サッカー戦術ドリル service worker — version 202610281730（dev/build.js が生成）
+const CACHE = 'senjutsu-drill-202610281730';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'favicon-32.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('senjutsu-drill-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

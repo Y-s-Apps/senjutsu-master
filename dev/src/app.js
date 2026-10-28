@@ -143,6 +143,39 @@
     });
   }
 
+  /* ---------- 改行位置: 日本語の文を文節の境目でだけ折り返す ----------
+     body の word-break: keep-all と組み合わせ、文節の間に <wbr> を入れる（BudouX）。
+     innerHTML で文を差し込んだら、その要素に phrase() をかける。SVG の中は対象外。 */
+  const JA = /[　-ヿ㐀-鿿＀-￯]/;
+  // 行頭に来てはいけない文字（助詞・小さいかな・閉じ括弧・句読点）で始まる文節は前の文節につなげる。
+  // BudouX は「（あなた）|は」「」|の」のように括弧の後で切ることがあるため。
+  const NO_START = /^[をにがはのへてゃゅょぁぃぅぇぉっァィゥェォッャュョー、。・）」』，．：！？]/;
+  // 閉じ括弧の直後はブラウザが keep-all でも折るので、文節の中では WORD JOINER（U+2060）でつなぐ。
+  const phrases = text => window.BudouX.parse(text).reduce((a, p) => {
+    if (a.length && NO_START.test(p)) a[a.length - 1] += p; else a.push(p);
+    return a;
+  }, []).map(p => p.replace(/([）」』)])(?=.)/g, '$1⁠'));
+  function phrase(root) {
+    if (!root || !window.BudouX) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: n => (JA.test(n.nodeValue) && !n.parentElement.closest('svg, script, style')
+        && !/^(nowrap|pre)/.test(getComputedStyle(n.parentElement).whiteSpace)) // 1行のラベルには入れない（Chrome は nowrap でも <wbr> で折る）
+        ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+    });
+    const list = [];
+    while (w.nextNode()) list.push(w.currentNode);
+    list.forEach(n => {
+      const parts = phrases(n.nodeValue);
+      if (parts.length < 2) return;
+      const frag = document.createDocumentFragment();
+      parts.forEach((p, i) => {
+        if (i) frag.appendChild(document.createElement('wbr'));
+        frag.appendChild(document.createTextNode(p));
+      });
+      n.parentNode.replaceChild(frag, n);
+    });
+  }
+
   /* ---------- 画面: ホーム ---------- */
   const TWO_COL = '(min-width: 720px) and (min-aspect-ratio: 5/4)';
   function pips(n) { return [0, 1, 2].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join(''); }
@@ -154,7 +187,6 @@
     <div class="screen home">
       <div class="h-side">
         <header class="h-top">
-          <p class="eyebrow">TACTICS BOARD · 105 × 68 m</p>
           <h1>サッカー戦術ドリル</h1>
           <p class="lead">ボードの状況を読んで次のプレーを選ぶ。選手が動いて、その理由を見せてくれます。</p>
         </header>
@@ -166,19 +198,20 @@
           <li><svg class="wide" viewBox="0 -2 16 4" aria-hidden="true"><path class="k-ln k-dash" d="M1 0H13"/><path class="k-hd" d="M15 0L12.6-1.3V1.3Z"/></svg>走る</li>
           <li><svg class="wide" viewBox="0 -2 16 4" aria-hidden="true"><path class="k-ln" d="M1 0Q2 -1.2 3 0T5 0T7 0T9 0T11 0T13 0"/><path class="k-hd" d="M15 0L12.6-1.3V1.3Z"/></svg>ドリブル</li>
         </ul>
-        <p class="foot">味方はいつも上へ攻めます。採点はベスト2点・悪くない1点・要注意0点。</p>
+        <p class="foot"><span>味方はいつも上（↑）へ攻めます。</span><span>採点：ベスト2点・悪くない1点・要注意0点</span></p>
       </div>
       <nav class="levels" aria-label="レベルを選ぶ">
         ${LV.map((L, i) => {
           const b = best[L.id];
-          return `<button class="lv" data-start="${i}">
-            <span class="lv-no">Lv.${L.no}<span class="pips" aria-hidden="true">${pips(L.no)}</span></span>
-            <span class="lv-main"><b><em>${L.name}</em>${L.title}</b><small>${L.who} · ${L.feat}</small><small class="tp">${L.q.map(q => q.key[0].replace(/（.*?）/, '')).join('・')}</small></span>
-            <span class="lv-best"><small>最高</small><b>${b == null ? '—' : b}</b><small>/${maxOf(L)}</small></span>
+          return `<button class="lv" data-start="${i}" aria-label="Lv.${L.no} ${L.name} ${L.title}">
+            <span class="lv-head"><span class="pips" aria-hidden="true">${pips(L.no)}</span><span class="lv-name">${L.name}</span><span class="lv-title">${L.title}</span><span class="lv-best">最高<b>${b == null ? '—' : b}</b>/${maxOf(L)}</span></span>
+            <span class="lv-who">${L.who}向け${L.feat ? `<span class="lv-tag">${L.feat}</span>` : ''}</span>
+            <span class="lv-topics">${L.q.map(q => `<span>${q.key[0].replace(/（.*?）/, '')}</span>`).join(' ')}</span>
           </button>`;
         }).join('')}
       </nav>
     </div>`;
+    phrase(app);
   }
 
   /* ---------- 画面: 問題 ---------- */
@@ -223,6 +256,43 @@
         </section>
       </div>
     </div>`;
+    phrase(app);
+    lockPanel();
+  }
+
+  // 縦並びのとき、回答後に出る解説（どの選択肢・どのタブでも）が収まる高さを先に測ってパネルを固定する。
+  // 問題と解説でパネルの高さが同じなので、ボードの大きさは変わらない。ボードには最低でも残り高さの 38% を残す。
+  function lockPanel() {
+    const panel = document.getElementById('panel');
+    if (!panel || matchMedia(TWO_COL).matches) return;
+    const s = cur(), room = document.querySelector('.stage').clientHeight;
+    const probe = document.createElement('section');
+    probe.className = 'panel is-fb';
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = `position:absolute;left:-9999px;top:0;visibility:hidden;max-height:none;height:auto;width:${panel.clientWidth}px`;
+    panel.parentNode.appendChild(probe);
+    let need = 0;
+    s.opts.forEach(o => {
+      tabList(s, o, bestOf(s)).forEach(([id]) => {
+        probe.innerHTML = fbHTML(s, o, id, false);
+        phrase(probe);
+        need = Math.max(need, probe.scrollHeight);
+      });
+    });
+    probe.remove();
+    panel.style.height = Math.round(Math.min(Math.max(panel.offsetHeight, need), room * 0.62)) + 'px';
+  }
+
+  const bestOf = s => s.opts.reduce((p, q) => (q.sc > p.sc ? q : p));
+
+  function fbHTML(s, o, tab, last) {
+    return `
+      <div class="tabs" role="tablist">${tabList(s, o, bestOf(s)).map(([id, n]) => `<button class="tab" role="tab" data-tab="${id}" aria-selected="${id === tab}">${n}</button>`).join('')}</div>
+      <div class="tabbody" id="tabbody" role="tabpanel">${tabBody(tab, o.k)}</div>
+      <div class="acts">
+        <button class="btn ghost" id="replay" aria-label="動きをもう一度再生">↻ 動き</button>
+        <button class="btn" id="next">${last ? '結果を見る' : '次の問題へ'} →</button>
+      </div>`;
   }
 
   function tabList(s, o, best) {
@@ -232,10 +302,10 @@
     return T;
   }
 
-  function tabBody(id) {
-    const s = cur(), a = S.ans[S.qi];
-    const o = s.opts.find(x => x.k === a.k);
-    const best = s.opts.reduce((p, q) => (q.sc > p.sc ? q : p));
+  function tabBody(id, k = S.ans[S.qi].k) {
+    const s = cur();
+    const o = s.opts.find(x => x.k === k);
+    const best = bestOf(s);
     const line = (x, tag) => `<p class="oline c${x.sc}"><span class="k k${x.sc}">${x.k}</span><span>${tag}${x.l}</span></p><p>${x.why}</p>`;
     switch (id) {
       case 'why':
@@ -254,6 +324,7 @@
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
     const b = document.getElementById('tabbody');
     b.innerHTML = tabBody(id); b.scrollTop = 0;
+    phrase(b);
   }
 
   function choose(k) {
@@ -275,21 +346,10 @@
     document.getElementById('pt').textContent = total();
     document.querySelector('.dots').innerHTML = dots();
 
-    // 縦並びのときは、パネルの高さを固定してボードの大きさが変わらないようにする
     const panel = document.getElementById('panel');
-    if (!matchMedia(TWO_COL).matches) {
-      const room = document.querySelector('.stage').clientHeight;
-      panel.style.height = Math.round(Math.max(panel.offsetHeight, Math.min(350, room * 0.55))) + 'px';
-    }
-    const last = S.qi === L.q.length - 1;
     panel.classList.add('is-fb');
-    panel.innerHTML = `
-      <div class="tabs" role="tablist">${tabList(s, o, best).map(([id, n]) => `<button class="tab" role="tab" data-tab="${id}" aria-selected="${id === 'why'}">${n}</button>`).join('')}</div>
-      <div class="tabbody" id="tabbody" role="tabpanel">${tabBody('why')}</div>
-      <div class="acts">
-        <button class="btn ghost" id="replay" aria-label="動きをもう一度再生">↻ 動き</button>
-        <button class="btn" id="next">${last ? '結果を見る' : '次の問題へ'} →</button>
-      </div>`;
+    panel.innerHTML = fbHTML(s, o, 'why', S.qi === L.q.length - 1);
+    phrase(panel);
     play(s);
   }
 
@@ -328,6 +388,7 @@
         <button class="btn ghost" id="toHome">レベル選択</button>
       </div>
     </div>`;
+    phrase(app);
   }
 
   function start(i) { S.lv = i; S.qi = 0; S.ans = []; question(); }
@@ -357,7 +418,7 @@
     else if (S.done && (e.key === 'ArrowRight')) next();
   });
   addEventListener('resize', () => {
-    const p = document.querySelector('.panel.is-fb');
+    const p = document.getElementById('panel');
     if (p && matchMedia(TWO_COL).matches) p.style.height = '';
   });
 

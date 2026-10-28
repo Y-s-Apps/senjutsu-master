@@ -2,7 +2,7 @@
 window.LEVELS = window.LEVELS || [];
 window.LEVELS[2] = {
   id: 'coach', no: 3, name: '上級', title: '構造と指導',
-  who: '指導者・分析が好きな人', feat: '指導ポイント・練習メニューつき',
+  who: '指導者・分析が好きな人', feat: '指導のポイント・練習メニューつき',
   q: [
     {
       t: '2トップが同数でプレス', ph: 'atk', me: 'h6', view: [-2, 50, 72, 58],

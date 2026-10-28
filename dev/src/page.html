@@ -5,36 +5,18 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=IBM+Plex+Mono:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
 /* レイアウト: 1画面完結。戦術ボード（枠付きピッチ＋マグネット）が残りの高さを埋め、問題とフィードバックは下（横長なら右）のパネルにタブで収める */
+/* 配色: 黒ベースの1テーマ（ユーザーの指定）。端末のライト/ダーク設定にかかわらず同じ見た目 */
 :root {
-  --bg: #E8ECE6; --surface: #F8F9F5; --ink: #16201A; --muted: #56635A; --line: #C8D0C5;
-  --frame: #D2D8CF; --frame-hi: #EFF2EC;
-  --accent: #1D4ED0; --accent-ink: #FFFFFF;
-  --good: #16824A; --ok: #A87406; --bad: #BF3428; --on-sem: #FFFFFF;
-  --grass: #2F7549; --grass-2: #2A6B42; --chalk: rgba(244, 249, 242, .88);
-  --home: #1D4ED0; --away: #D1392B; --pen: #FFD43B; --pen-ink: #1B1A10;
-  --p-good: #8DF7B8; --p-bad: #FF8B7B; --pen-mark: #B38600; --hl: rgba(255, 212, 59, .55);
-  --f-disp: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
-  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0E1310; --surface: #161D18; --ink: #E6ECE4; --muted: #96A399; --line: #2A352D;
-    --frame: #212A23; --frame-hi: #2C362E;
-    --accent: #7D9CFF; --accent-ink: #0E1310;
-    --good: #43C881; --ok: #E5B23A; --bad: #FF6D5E; --on-sem: #0E1310;
-    --grass: #1E5634; --grass-2: #1A4D2E; --chalk: rgba(228, 239, 230, .78);
-    --home: #3F6DF5; --away: #EE4A3B; --pen-mark: #FFD43B; --hl: rgba(255, 212, 59, .3);
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
   --bg: #0E1310; --surface: #161D18; --ink: #E6ECE4; --muted: #96A399; --line: #2A352D;
   --frame: #212A23; --frame-hi: #2C362E;
   --accent: #7D9CFF; --accent-ink: #0E1310;
   --good: #43C881; --ok: #E5B23A; --bad: #FF6D5E; --on-sem: #0E1310;
   --grass: #1E5634; --grass-2: #1A4D2E; --chalk: rgba(228, 239, 230, .78);
-  --home: #3F6DF5; --away: #EE4A3B; --pen-mark: #FFD43B; --hl: rgba(255, 212, 59, .3);
+  --home: #3F6DF5; --away: #EE4A3B; --pen: #FFD43B; --pen-ink: #1B1A10;
+  --p-good: #8DF7B8; --p-bad: #FF8B7B; --pen-mark: #FFD43B; --hl: rgba(255, 212, 59, .3);
+  --f-disp: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   color-scheme: dark;
 }
 
@@ -42,6 +24,10 @@
 html { box-sizing: border-box; height: 100%; }
 *, *::before, *::after { box-sizing: inherit; }
 body { height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+/* 改行: 日本語は文節の境目（app.js の phrase() が <wbr> を入れる）だけで折り返す。収まらない長い語だけ途中で折る */
+body { word-break: keep-all; overflow-wrap: anywhere; line-break: strict; }
+p, .opt .l, .lv-who { text-wrap: pretty; }
+h1, h2, .lead, .msg { text-wrap: balance; }
 #app {
   height: 100%; max-width: 1180px; margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -74,22 +60,25 @@ button { font: inherit; color: inherit; }
 .k-ln { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linecap: round; }
 .k-dash { stroke-dasharray: 1.6 1.2; }
 .k-hd { fill: var(--ink); }
-.foot { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.foot { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); line-height: 1.6; }
 .levels { display: flex; flex-direction: column; gap: 10px; }
-.lv { appearance: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; cursor: pointer; transition: border-color .15s, transform .12s; }
+.lv { appearance: none; display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 14px 11px; cursor: pointer; line-height: 1.5; transition: border-color .15s, transform .12s; }
 .lv:hover { border-color: var(--accent); }
 .lv:active { transform: translateY(1px); }
-.lv-no { display: flex; flex-direction: column; align-items: center; gap: 6px; font: 600 12px var(--f-mono); color: var(--muted); }
-.pips { display: flex; gap: 3px; }
+.lv > span { display: block; min-width: 0; }
+.lv .lv-head { display: flex; align-items: center; gap: 9px; }
+.pips { display: flex; gap: 3px; flex: none; }
 .pips i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--home); }
 .pips i.on { background: var(--home); }
-.lv-main { display: flex; flex-direction: column; min-width: 0; line-height: 1.45; }
-.lv-main b { font: 400 19px/1.35 var(--f-disp); }
-.lv-main em { font: 700 12px var(--f-body); font-style: normal; color: var(--accent); margin-right: 8px; letter-spacing: .06em; vertical-align: 2px; }
-.lv-main small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-main .tp { color: var(--ink); opacity: .72; }
-.lv-best { display: flex; flex-direction: column; align-items: center; line-height: 1.2; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; min-width: 34px; }
-.lv-best b { font: 600 18px var(--f-mono); color: var(--ink); }
+.lv-name { flex: none; font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .06em; }
+.lv-title { min-width: 0; font: 400 19px/1.35 var(--f-disp); }
+.lv-best { margin-left: auto; flex: none; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lv-best b { font: 600 16px var(--f-mono); color: var(--ink); margin-left: 4px; }
+.lv .lv-who { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 12.5px; color: var(--muted); }
+.lv-tag { white-space: nowrap; font-size: 11px; font-weight: 700; color: var(--ink); border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; line-height: 1.6; }
+.lv-topics { font-size: 12px; color: var(--ink); opacity: .8; text-wrap: balance; }
+.lv-topics span { white-space: nowrap; margin-right: 6px; }
+.lv-topics span::before { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); margin-right: 5px; vertical-align: 3px; }
 
 /* 問題画面 */
 .play { gap: 8px; }
@@ -109,7 +98,7 @@ button { font: inherit; color: inherit; }
 .board { --fp: 6px; position: relative; padding: var(--fp); border-radius: 12px; background: linear-gradient(160deg, var(--frame-hi), var(--frame)); box-shadow: 0 1px 0 var(--line), 0 12px 24px -16px rgba(0, 0, 0, .45); width: min(100cqw, calc((100cqh - 2 * var(--fp)) * var(--ar) + 2 * var(--fp))); }
 #pitch { display: block; width: 100%; height: auto; border-radius: 7px; background: var(--grass); }
 .dir { position: absolute; right: 12px; top: 11px; font: 600 10.5px var(--f-mono); color: var(--pen); background: rgba(0, 0, 0, .38); padding: 1px 8px; border-radius: 99px; pointer-events: none; }
-.stamp { position: absolute; left: 12px; top: 10px; font-weight: 700; font-size: 13px; padding: 3px 12px; box-shadow: 0 4px 12px -6px rgba(0, 0, 0, .6); border-radius: 99px; color: var(--on-sem); pointer-events: none; }
+.stamp { position: absolute; left: 12px; top: 10px; white-space: nowrap; font-weight: 700; font-size: 13px; padding: 3px 12px; box-shadow: 0 4px 12px -6px rgba(0, 0, 0, .6); border-radius: 99px; color: var(--on-sem); pointer-events: none; }
 .stamp.v2 { background: var(--good); } .stamp.v1 { background: var(--ok); } .stamp.v0 { background: var(--bad); }
 .hint-cap { position: absolute; left: 12px; right: 12px; bottom: 12px; background: var(--surface); color: var(--ink); border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.5; box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .5); }
 
@@ -124,16 +113,11 @@ button { font: inherit; color: inherit; }
 .hint-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .sit { color: var(--muted); font-size: 13.5px; line-height: 1.6; }
 .qq { font-weight: 700; font-size: 15px; line-height: 1.5; }
-.opts { display: grid; gap: 6px; }
+.opts { display: grid; gap: 6px; margin-top: auto; }
 .opt { appearance: none; display: flex; align-items: center; gap: 10px; min-height: 44px; text-align: left; background: var(--surface); border: 1.5px solid var(--line); border-radius: 11px; padding: 7px 12px; cursor: pointer; font-size: 14px; line-height: 1.45; transition: border-color .15s; }
 .opt:hover { border-color: var(--accent); }
 .opt .k { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--pen); color: var(--pen-ink); font: 600 13px var(--f-mono); }
 
-.fb-head { display: flex; align-items: baseline; gap: 8px; flex: none; }
-.verdict { font: 400 21px/1.3 var(--f-disp); white-space: nowrap; }
-.verdict.v2 { color: var(--good); } .verdict.v1 { color: var(--ok); } .verdict.v0 { color: var(--bad); }
-.gain { font: 600 13px var(--f-mono); color: var(--muted); }
-.key-chip { margin-left: auto; min-width: 0; font-size: 12px; font-weight: 700; background: var(--hl); padding: 1px 8px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tabs { flex: none; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { appearance: none; background: none; border: 0; border-bottom: 2.5px solid transparent; margin-bottom: -1px; padding: 4px 10px 6px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; white-space: nowrap; }
@@ -156,14 +140,25 @@ button { font: inherit; color: inherit; }
 .score em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--pen-ink); background: var(--pen); padding: 2px 10px; border-radius: 99px; }
 .msg { font-size: 15px; font-weight: 500; line-height: 1.6; margin-top: 6px; }
 .rlist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-.rlist li { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
-.chip { font-size: 11.5px; font-weight: 700; text-align: center; padding: 1px 0; border-radius: 99px; color: var(--on-sem); }
+.rlist li { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.chip { font-size: 11.5px; font-weight: 700; text-align: center; padding: 1px 0; border-radius: 99px; color: var(--on-sem); white-space: nowrap; }
 .chip.c2 { background: var(--good); } .chip.c1 { background: var(--ok); } .chip.c0 { background: var(--bad); }
-.rt { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.rt b { flex: 0 1 auto; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rt small { flex: 1 1 0; min-width: 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt { display: flex; flex-direction: column; min-width: 0; line-height: 1.4; }
+.rt b { font-size: 14px; }
+.rt small { font-size: 12px; color: var(--muted); }
 
-/* 背の低い画面: フィードバックの文字を少し詰める */
+/* 背の低い画面: ホームとフィードバックの文字・余白を少し詰める */
+@media (max-height: 660px) {
+  .home { gap: 10px; }
+  .h-side { gap: 8px; }
+  .h-top h1 { font-size: 27px; margin-block: 0 4px; }
+  .lead { font-size: 13px; line-height: 1.5; }
+  .key { padding: 7px 10px; gap: 2px 10px; }
+  .foot { font-size: 11.5px; line-height: 1.5; }
+  .levels { gap: 8px; }
+  .lv { padding: 8px 12px 9px; gap: 1px; }
+  .lv-title { font-size: 17px; }
+}
 @media (max-height: 700px) {
   .tabbody { font-size: 13.5px; line-height: 1.52; gap: 4px; }
   .oline { font-size: 12.5px; }
@@ -176,6 +171,7 @@ button { font: inherit; color: inherit; }
   .board-area { min-height: 0; height: 100%; }
   .panel { max-height: none; height: 100%; justify-content: center; gap: 10px; }
   .panel.is-fb { justify-content: flex-start; padding-top: 8px; }
+  .opts { margin-top: 0; }
   .qt { font-size: 24px; } .sit { font-size: 14.5px; } .qq { font-size: 16.5px; }
   .opt { font-size: 15px; padding: 10px 14px; }
   .tabbody { font-size: 15px; }
@@ -232,4 +228,5 @@ button { font: inherit; color: inherit; }
 <script src="data1.js"></script>
 <script src="data2.js"></script>
 <script src="data3.js"></script>
+<script src="budoux.js"></script>
 <script src="app.js"></script>
