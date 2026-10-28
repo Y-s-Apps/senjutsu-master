@@ -1,0 +1,1070 @@
+<title>サッカー戦術ドリル</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=IBM+Plex+Mono:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* レイアウト: 1画面完結。戦術ボード（枠付きピッチ＋マグネット）が残りの高さを埋め、問題とフィードバックは下（横長なら右）のパネルにタブで収める */
+:root {
+  --bg: #E8ECE6; --surface: #F8F9F5; --ink: #16201A; --muted: #56635A; --line: #C8D0C5;
+  --frame: #D2D8CF; --frame-hi: #EFF2EC;
+  --accent: #1D4ED0; --accent-ink: #FFFFFF;
+  --good: #16824A; --ok: #A87406; --bad: #BF3428; --on-sem: #FFFFFF;
+  --grass: #2F7549; --grass-2: #2A6B42; --chalk: rgba(244, 249, 242, .88);
+  --home: #1D4ED0; --away: #D1392B; --pen: #FFD43B; --pen-ink: #1B1A10;
+  --p-good: #8DF7B8; --p-bad: #FF8B7B; --pen-mark: #B38600; --hl: rgba(255, 212, 59, .55);
+  --f-disp: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1310; --surface: #161D18; --ink: #E6ECE4; --muted: #96A399; --line: #2A352D;
+    --frame: #212A23; --frame-hi: #2C362E;
+    --accent: #7D9CFF; --accent-ink: #0E1310;
+    --good: #43C881; --ok: #E5B23A; --bad: #FF6D5E; --on-sem: #0E1310;
+    --grass: #1E5634; --grass-2: #1A4D2E; --chalk: rgba(228, 239, 230, .78);
+    --home: #3F6DF5; --away: #EE4A3B; --pen-mark: #FFD43B; --hl: rgba(255, 212, 59, .3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1310; --surface: #161D18; --ink: #E6ECE4; --muted: #96A399; --line: #2A352D;
+  --frame: #212A23; --frame-hi: #2C362E;
+  --accent: #7D9CFF; --accent-ink: #0E1310;
+  --good: #43C881; --ok: #E5B23A; --bad: #FF6D5E; --on-sem: #0E1310;
+  --grass: #1E5634; --grass-2: #1A4D2E; --chalk: rgba(228, 239, 230, .78);
+  --home: #3F6DF5; --away: #EE4A3B; --pen-mark: #FFD43B; --hl: rgba(255, 212, 59, .3);
+  color-scheme: dark;
+}
+
+/* 1画面に収める: html/body/#app を画面の高さに固定し、各画面の中だけで配分する */
+html { box-sizing: border-box; height: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+body { height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+#app {
+  height: 100%; max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px;
+}
+h1, h2, p { margin: 0; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.screen { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+
+.btn { appearance: none; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 10px 16px; border-radius: 10px; cursor: pointer; line-height: 1.4; transition: transform .12s, filter .12s; }
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translateY(1px); }
+.btn.ghost { background: transparent; color: var(--accent); }
+.link { appearance: none; background: none; border: 0; color: var(--accent); cursor: pointer; font-weight: 700; }
+.eyebrow { font: 600 11px/1.4 var(--f-mono); letter-spacing: .14em; color: var(--muted); }
+
+/* ホーム */
+.home { gap: clamp(12px, 2.4vh, 22px); justify-content: center; overflow-y: auto; }
+.h-side { display: flex; flex-direction: column; gap: clamp(10px, 2vh, 16px); }
+.h-top h1 { font: 400 clamp(30px, 7.6vw, 60px)/1.12 var(--f-disp); margin-block: 6px 8px; text-wrap: balance; }
+.lead { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 30em; }
+.key { list-style: none; margin: 0; padding: 10px 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 10px; font-size: 12.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.key li { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.key svg { width: 16px; height: 16px; flex: none; }
+.key svg.wide { width: 26px; height: 9px; }
+.k-home { fill: var(--home); } .k-away { fill: var(--away); }
+.k-me { fill: none; stroke: var(--pen-mark); stroke-width: .5; stroke-dasharray: 1 .6; }
+.k-ln { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linecap: round; }
+.k-dash { stroke-dasharray: 1.6 1.2; }
+.k-hd { fill: var(--ink); }
+.foot { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.levels { display: flex; flex-direction: column; gap: 10px; }
+.lv { appearance: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; cursor: pointer; transition: border-color .15s, transform .12s; }
+.lv:hover { border-color: var(--accent); }
+.lv:active { transform: translateY(1px); }
+.lv-no { display: flex; flex-direction: column; align-items: center; gap: 6px; font: 600 12px var(--f-mono); color: var(--muted); }
+.pips { display: flex; gap: 3px; }
+.pips i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--home); }
+.pips i.on { background: var(--home); }
+.lv-main { display: flex; flex-direction: column; min-width: 0; line-height: 1.45; }
+.lv-main b { font: 400 19px/1.35 var(--f-disp); }
+.lv-main em { font: 700 12px var(--f-body); font-style: normal; color: var(--accent); margin-right: 8px; letter-spacing: .06em; vertical-align: 2px; }
+.lv-main small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-main .tp { color: var(--ink); opacity: .72; }
+.lv-best { display: flex; flex-direction: column; align-items: center; line-height: 1.2; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; min-width: 34px; }
+.lv-best b { font: 600 18px var(--f-mono); color: var(--ink); }
+
+/* 問題画面 */
+.play { gap: 8px; }
+.bar { display: flex; align-items: center; gap: 10px; min-height: 30px; flex: none; }
+.back { font-size: 19px; padding: 0 4px 0 0; line-height: 1; }
+.bar-lv { font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+.dots { flex: 1; list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; min-width: 40px; }
+.dots li { flex: 1; height: 5px; border-radius: 3px; background: var(--line); }
+.dots li.now { background: var(--accent); }
+.dots li.r2 { background: var(--good); } .dots li.r1 { background: var(--ok); } .dots li.r0 { background: var(--bad); }
+.bar-q, .bar-pt { font: 600 13px var(--f-mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar-q small, .bar-pt { color: var(--muted); }
+.bar-pt b { color: var(--ink); font-size: 15px; }
+
+.stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.board-area { flex: 1 1 auto; min-height: 140px; container-type: size; display: grid; place-items: center; }
+.board { --fp: 6px; position: relative; padding: var(--fp); border-radius: 12px; background: linear-gradient(160deg, var(--frame-hi), var(--frame)); box-shadow: 0 1px 0 var(--line), 0 12px 24px -16px rgba(0, 0, 0, .45); width: min(100cqw, calc((100cqh - 2 * var(--fp)) * var(--ar) + 2 * var(--fp))); }
+#pitch { display: block; width: 100%; height: auto; border-radius: 7px; background: var(--grass); }
+.dir { position: absolute; right: 12px; top: 11px; font: 600 10.5px var(--f-mono); color: var(--pen); background: rgba(0, 0, 0, .38); padding: 1px 8px; border-radius: 99px; pointer-events: none; }
+.stamp { position: absolute; left: 12px; top: 10px; font-weight: 700; font-size: 13px; padding: 3px 12px; box-shadow: 0 4px 12px -6px rgba(0, 0, 0, .6); border-radius: 99px; color: var(--on-sem); pointer-events: none; }
+.stamp.v2 { background: var(--good); } .stamp.v1 { background: var(--ok); } .stamp.v0 { background: var(--bad); }
+.hint-cap { position: absolute; left: 12px; right: 12px; bottom: 12px; background: var(--surface); color: var(--ink); border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.5; box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .5); }
+
+.panel { flex: 0 0 auto; max-height: 66%; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.panel.is-fb { overflow: hidden; }
+.qhead { display: flex; align-items: center; gap: 8px; }
+.phase { flex: none; font-size: 11.5px; font-weight: 700; padding: 1px 9px; border-radius: 99px; color: var(--on-sem); line-height: 1.6; }
+.ph-atk { background: var(--home); color: #FFFFFF; } .ph-def { background: var(--away); color: #FFFFFF; }
+.ph-tr { background: var(--ok); } .ph-coach { background: var(--ink); color: var(--bg); }
+.qt { flex: 1; min-width: 0; font: 400 18px/1.3 var(--f-disp); text-wrap: balance; }
+.hint-btn { flex: none; appearance: none; border: 1.5px solid var(--accent); background: transparent; color: var(--accent); border-radius: 99px; padding: 1px 11px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.hint-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.sit { color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+.qq { font-weight: 700; font-size: 15px; line-height: 1.5; }
+.opts { display: grid; gap: 6px; }
+.opt { appearance: none; display: flex; align-items: center; gap: 10px; min-height: 44px; text-align: left; background: var(--surface); border: 1.5px solid var(--line); border-radius: 11px; padding: 7px 12px; cursor: pointer; font-size: 14px; line-height: 1.45; transition: border-color .15s; }
+.opt:hover { border-color: var(--accent); }
+.opt .k { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--pen); color: var(--pen-ink); font: 600 13px var(--f-mono); }
+
+.fb-head { display: flex; align-items: baseline; gap: 8px; flex: none; }
+.verdict { font: 400 21px/1.3 var(--f-disp); white-space: nowrap; }
+.verdict.v2 { color: var(--good); } .verdict.v1 { color: var(--ok); } .verdict.v0 { color: var(--bad); }
+.gain { font: 600 13px var(--f-mono); color: var(--muted); }
+.key-chip { margin-left: auto; min-width: 0; font-size: 12px; font-weight: 700; background: var(--hl); padding: 1px 8px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabs { flex: none; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { appearance: none; background: none; border: 0; border-bottom: 2.5px solid transparent; margin-bottom: -1px; padding: 4px 10px 6px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; font-size: 14px; line-height: 1.65; padding-top: 2px; }
+.oline { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; line-height: 1.45; }
+.oline .k { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--f-mono); color: var(--on-sem); }
+.k2 { background: var(--good); } .k1 { background: var(--ok); } .k0 { background: var(--bad); }
+.oline + p + .oline { margin-top: 6px; }
+.term .hl { font-size: 19px; background: linear-gradient(transparent 58%, var(--hl) 58%); padding-inline: 2px; }
+.acts { flex: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.acts .btn { padding: 9px 14px; }
+.play .acts .btn:last-child { flex: 1 1 auto; }
+
+/* 結果 */
+.result { gap: clamp(10px, 2vh, 18px); justify-content: center; overflow-y: auto; max-width: 620px; width: 100%; margin-inline: auto; }
+.score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.score b { font: 400 clamp(52px, 11vh, 88px)/1 var(--f-disp); font-variant-numeric: tabular-nums; }
+.score span { font: 600 20px var(--f-mono); color: var(--muted); }
+.score em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--pen-ink); background: var(--pen); padding: 2px 10px; border-radius: 99px; }
+.msg { font-size: 15px; font-weight: 500; line-height: 1.6; margin-top: 6px; }
+.rlist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.rlist li { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.chip { font-size: 11.5px; font-weight: 700; text-align: center; padding: 1px 0; border-radius: 99px; color: var(--on-sem); }
+.chip.c2 { background: var(--good); } .chip.c1 { background: var(--ok); } .chip.c0 { background: var(--bad); }
+.rt { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.rt b { flex: 0 1 auto; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt small { flex: 1 1 0; min-width: 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 背の低い画面: フィードバックの文字を少し詰める */
+@media (max-height: 700px) {
+  .tabbody { font-size: 13.5px; line-height: 1.52; gap: 4px; }
+  .oline { font-size: 12.5px; }
+  .sit { font-size: 13px; line-height: 1.55; }
+}
+
+/* 横長の画面: ボードを左、問題を右に並べる */
+@media (min-width: 720px) and (min-aspect-ratio: 5/4) {
+  .stage { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr); grid-template-rows: minmax(0, 1fr); gap: 24px; }
+  .board-area { min-height: 0; height: 100%; }
+  .panel { max-height: none; height: 100%; justify-content: center; gap: 10px; }
+  .panel.is-fb { justify-content: flex-start; padding-top: 8px; }
+  .qt { font-size: 24px; } .sit { font-size: 14.5px; } .qq { font-size: 16.5px; }
+  .opt { font-size: 15px; padding: 10px 14px; }
+  .tabbody { font-size: 15px; }
+  .home { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: center; align-items: center; column-gap: 48px; }
+}
+
+/* ピッチ内 SVG */
+.grass { fill: var(--grass); } .mow { fill: var(--grass-2); }
+.chalk * { fill: none; stroke: var(--chalk); stroke-width: .22; }
+.spots { fill: var(--chalk); }
+.goal rect { fill: var(--chalk); fill-opacity: .14; stroke: var(--chalk); stroke-width: .22; }
+.lanes line { stroke: var(--chalk); stroke-width: .18; stroke-dasharray: .8 .8; opacity: .7; }
+.lanes text { fill: var(--chalk); font: 500 1.5px var(--f-body); text-anchor: middle; opacity: .85; }
+.offside line { stroke: var(--p-bad); stroke-width: .25; stroke-dasharray: 1 .7; }
+.offside text { fill: var(--p-bad); font: 700 1.5px var(--f-body); }
+
+.og { color: var(--pen); cursor: pointer; transition: opacity .3s; }
+.answered .og { cursor: default; }
+.og .ln { fill: none; stroke: currentColor; stroke-width: .42; stroke-linecap: round; stroke-linejoin: round; }
+.og .k-run { stroke-dasharray: 1.2 .9; }
+.og .k-look { stroke-dasharray: .05 .85; stroke-width: .55; }
+.og .hd { fill: currentColor; }
+.og .ring { fill: currentColor; fill-opacity: .12; stroke: currentColor; stroke-width: .32; stroke-dasharray: .9 .6; }
+.bdg circle { fill: currentColor; stroke: rgba(0, 0, 0, .35); stroke-width: .25; }
+.bdg .hit { fill: transparent; stroke: none; pointer-events: all; }
+.answered .bdg .hit { pointer-events: none; }
+.bdg text { pointer-events: none;  fill: var(--pen-ink); font: 600 2.1px var(--f-mono); text-anchor: middle; }
+.og:hover .bdg circle:not(.hit) { stroke: var(--pen-ink); stroke-width: .4; }
+.og.r2 { color: var(--p-good); } .og.r2 .ln { stroke-width: .6; }
+.og.r1 { color: var(--pen); } .og.r0 { color: var(--p-bad); }
+.og.dim { opacity: .18; }
+
+.pl, .ball { transition: transform .85s cubic-bezier(.45, .05, .25, 1); }
+.ball { transition-duration: .7s; }
+.snap .pl, .snap .ball { transition: none; }
+.mag { stroke: rgba(0, 0, 0, .4); stroke-width: .25; }
+.t-h .mag { fill: var(--home); } .t-a .mag { fill: var(--away); }
+.gk .mag { stroke: var(--chalk); stroke-width: .45; }
+.shine { fill: #FFFFFF; opacity: .26; }
+.num { fill: #FFFFFF; font: 600 2.05px var(--f-mono); text-anchor: middle; }
+.me-ring { fill: none; stroke: var(--pen); stroke-width: .42; stroke-dasharray: 1 .65; transform-box: fill-box; transform-origin: center; animation: spin 9s linear infinite; }
+.me-lb { fill: var(--pen); font: 700 1.7px var(--f-body); text-anchor: middle; paint-order: stroke; stroke: rgba(0, 0, 0, .55); stroke-width: .45; }
+.ball circle { fill: #FFFFFF; stroke: #141414; stroke-width: .2; }
+.ball .bp { fill: #141414; stroke: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pl, .ball, .og, .btn, .lv { transition: none; }
+  .me-ring { animation: none; }
+}
+</style>
+
+<div id="app"></div>
+<script>
+// Lv.1 初級 — 座標はメートル（ピッチ 68×105）。y=0 が相手ゴール、味方は常に上へ攻める。
+window.LEVELS = window.LEVELS || [];
+window.LEVELS[0] = {
+  id: 'basic', no: 1, name: '初級', title: '基本の原則',
+  who: 'はじめての選手・保護者', feat: 'ヒントつき',
+  q: [
+    {
+      t: 'パスを出したあと', ph: 'atk', me: 'h6', view: [-2, 22, 72, 50],
+      h: [[6, 32, 62], [8, 48, 52], [10, 22, 42], [9, 36, 28], [2, 60, 64], [4, 26, 70]],
+      a: [[8, 48, 46], [10, 40, 57], [6, 24, 37], [4, 33, 24]],
+      ball: [48, 52],
+      s: '6番（あなた）が右の8番へパスを出した。8番の前には相手8番がいて、前を向けない。',
+      q: 'パスを出した6番は、このあとどう動く？',
+      hint: '8番から6番への「戻しのパス」の線上に、誰かいないかな？',
+      opts: [
+        { k: 'A', l: 'その場に止まって、戻しのパスを待つ', sc: 0, mk: [32, 62],
+          why: '相手10番が、ちょうど8番と6番を結ぶ線の上にいます。止まっていると戻しのパスが通りません。' },
+        { k: 'B', l: '8番のすぐ近くまで寄っていく', sc: 1, mk: [44, 58],
+          why: '受けることはできますが、相手1人で2人をまとめて見られる距離です。周りのスペースもなくなります。' },
+        { k: 'C', l: '斜め前に動いて、相手の間で受けられる位置をとる', sc: 2, mk: [36, 47],
+          why: '相手10番の陰から出て、8番から見えるパスコースができました。8番・6番・10番で三角形ができ、次のパスの選択肢も増えます。' }
+      ],
+      play: [{ m: { h6: [36, 47] } }, { b: [36, 47] }, { b: [36, 29] }],
+      ex: 'パスは出したら終わりではありません。出した瞬間に「次にどこでもらえるか」を考えて動くのがパス&ムーブです。相手の体でパスコースが消えていないかを確かめ、斜めの位置をとると三角形ができます。',
+      key: ['パス&ムーブ', 'パスを出した直後に動き、次のパスを受けられる位置をとること。三角形をつくると選択肢が増える。']
+    },
+    {
+      t: '2対1のチャンス', ph: 'atk', me: 'h10', view: [-2, -3, 72, 52],
+      h: [[10, 30, 40], [11, 12, 38], [9, 46, 18]],
+      a: [[4, 26, 30], [5, 44, 22], [1, 34, 2.5]],
+      ball: [30, 40],
+      s: '10番（あなた）がドリブルで前進中。目の前には相手4番が1人。左には味方の11番がいる。',
+      q: '10番はどうする？',
+      hint: '相手4番が11番のほうへ行けなくなるのは、どんなとき？',
+      opts: [
+        { k: 'A', l: '4番に向かって仕掛け、引きつけてから11番へパス', sc: 2, ar: [[[30, 40], [27.5, 34], 'drib']], at: [32.5, 32.5],
+          why: '相手4番はボールを止めるために10番へ寄るしかありません。寄った瞬間、11番が完全にフリーになります。' },
+        { k: 'B', l: 'すぐに11番へパスを出す', sc: 1, ar: [[[30, 40], [13.5, 38], 'pass']], at: [17, 42],
+          why: 'パスは通りますが、相手4番はそのまま11番に寄せられます。せっかくの2対1が、1対1に戻ってしまいます。' },
+        { k: 'C', l: 'その場から思い切ってシュート', sc: 0, ar: [[[30, 40], [34, 1], 'pass']], at: [38, 6],
+          why: 'ゴールまで約40m。DFとGKがいる状態では、決まる確率はかなり低い選択です。' }
+      ],
+      play: [
+        { m: { h10: [28, 33], a4: [26, 29], h11: [11, 28] }, b: [28, 33] },
+        { b: [11, 28] },
+        { m: { h11: [18, 14], a4: [22, 22] }, b: [18, 14] },
+        { b: [32, 0.5], m: { a1: [31, 3] } }
+      ],
+      ex: '2対1は、相手1人に「ボール」と「もう1人」の両方を守らせる状況です。ボールを持った選手がDFに向かっていけば、DFはボールに寄るしかありません。寄った瞬間に空いた味方へパス。これが数的優位を生かす基本です。',
+      key: ['2対1（数的優位）', '相手より人数が多い局面。ボール保持者がDFを引きつけて、フリーの味方を使う。']
+    },
+    {
+      t: 'マークする相手との距離', ph: 'def', me: 'h4', view: [-2, 58, 72, 50],
+      h: [[4, 36, 77], [2, 55, 77], [5, 46, 87], [3, 16, 86], [1, 34, 102]],
+      a: [[7, 58, 72], [9, 30, 84], [11, 12, 74], [10, 42, 68]],
+      ball: [58, 72],
+      s: '相手7番が右サイドでボールを持っている。センターバックの4番（あなた）は、相手9番をマークしている。',
+      q: '4番はどこに立つ？',
+      hint: '9番に「背後」へ走られたら、どの位置なら間に合う？',
+      opts: [
+        { k: 'A', l: '9番の前（ボールに近い側）に立つ', sc: 0, mk: [31, 79.5],
+          why: 'ボールを奪えそうに見えますが、9番に背後（ゴール側）へ走られると、もう追いつけません。' },
+        { k: 'B', l: '9番とゴールを結ぶ線の上、ボールも見える位置', sc: 2, mk: [33, 89],
+          why: '9番より自分のゴールに近い位置なので、背後へのパスにも対応できます。少しボール側に立ち、体を開けば、ボールと9番を同時に見られます。' },
+        { k: 'C', l: 'ゴール前まで下がって待つ', sc: 1, mk: [30, 97],
+          why: 'ゴールは守れますが、9番との距離が遠すぎます。9番が前を向いて、フリーでボールを受けてしまいます。' }
+      ],
+      play: [
+        { m: { h4: [33, 89] } },
+        { m: { a9: [31, 91], h4: [33.5, 92] }, b: [33, 92] }
+      ],
+      ex: '守備の基本は「ゴールサイド」。マークする相手と自分のゴールを結ぶ線の上に立ちます。相手との距離は、パスが出たらすぐ寄せられる2〜3mが目安。ボールと相手を同時に見られる体の向きも大切です。',
+      key: ['ゴールサイド', 'マークする相手より、自分のゴールに近い側に立つこと。ボールと相手を同時に見る。']
+    },
+    {
+      t: '相手が中央を固めている', ph: 'atk', me: 'h7', view: [-2, 12, 72, 52],
+      h: [[6, 34, 56], [9, 34, 20], [10, 32, 32], [11, 6, 32], [7, 42, 32], [8, 24, 46]],
+      a: [[3, 22, 26], [4, 30, 25], [5, 38, 25], [2, 46, 26], [11, 22, 37], [8, 30, 38], [6, 38, 38], [7, 46, 37], [9, 34, 48]],
+      ball: [34, 56],
+      s: '相手は8人で中央を固めている。右ウイングの7番（あなた）は、中央寄りの位置にいる。',
+      q: '7番はどこにいるべき？',
+      hint: '相手の守備を「横に」広げるには、自分たちはどこに立てばいい？',
+      opts: [
+        { k: 'A', l: '今の位置（中央寄り）にとどまる', sc: 0, mk: [42, 32],
+          why: '中央に人が集まると、相手も狭い範囲を守るだけで済みます。パスを通す隙間が生まれません。' },
+        { k: 'B', l: '右のタッチライン際まで大きく広がる', sc: 2, mk: [64, 30],
+          why: '相手2番は7番を放っておけず、外へ引っ張られます。相手の間が広がり、中央にもすき間が生まれます。' },
+        { k: 'C', l: 'ボールに近づくため、下がって受けにいく', sc: 1, mk: [54, 48],
+          why: '受けることはできますが、相手の前でもらうだけです。相手の守備を広げる効果がありません。' }
+      ],
+      play: [
+        { m: { h7: [64, 30], a2: [55, 28] } },
+        { b: [64, 30] },
+        { m: { h9: [46, 16] }, b: [46, 16] }
+      ],
+      ex: '攻撃では「幅」で相手を広げます。両サイドの選手がタッチライン際に立つと、相手は横に伸ばされ、選手と選手の間にすき間ができます。広がることは、中央を使うための準備でもあります。',
+      key: ['幅（ワイド）', '攻撃時にピッチを横いっぱいに使うこと。相手の守備を横に広げ、すき間をつくる。']
+    },
+    {
+      t: '背中に相手を背負った', ph: 'atk', me: 'h9', view: [-2, -3, 72, 56],
+      h: [[9, 34, 28], [8, 40, 42], [10, 24, 36], [7, 58, 26], [11, 10, 26]],
+      a: [[4, 34, 24.5], [5, 44, 24], [6, 27, 41], [1, 34, 2.5]],
+      ball: [34, 28],
+      s: 'FWの9番（あなた）がゴールに背を向けてボールを受けた。すぐ後ろには相手4番がぴったりついている。',
+      q: '9番はどうする？',
+      hint: 'ゴールの方向を「見ながら」プレーできるのは誰？',
+      opts: [
+        { k: 'A', l: '無理に反転して、シュートを狙う', sc: 0, ar: [[[34, 28], [32, 19], 'drib']],
+          why: '背中に相手が密着しています。奪われやすく、奪われればそのままカウンターを受けます。' },
+        { k: 'B', l: '前を向いている8番へ落とす（レイオフ）', sc: 2, ar: [[[34, 28], [39.5, 41], 'pass']], at: [44, 38],
+          why: '8番は前を向いた状態でボールを持てます。9番はすぐに次の動き出しをすれば、壁パス（ワンツー）で相手の背後を取れます。' },
+        { k: 'C', l: '横へドリブルして時間をつくる', sc: 1, ar: [[[34, 28], [22, 30], 'drib']],
+          why: 'ボールは持てますが、その間に相手の守備がそろいます。攻撃のスピードが落ちます。' }
+      ],
+      play: [
+        { b: [40, 42] },
+        { m: { h9: [40, 19], a4: [36, 22] }, b: [40, 19] },
+        { b: [36, 0.5] }
+      ],
+      ex: '背中に相手を背負った状態では、前を向くのは難しく、奪われればカウンターの危険があります。前を向いている味方に落とし（レイオフ）、自分はすぐ次の動き出し。壁パス（ワンツー）になり、相手の背後を取れます。',
+      key: ['レイオフ（落とし）', '前を向けない選手が、前を向いている味方にボールを預けるプレー。']
+    },
+    {
+      t: 'パスが出る直前', ph: 'atk', me: 'h9', view: [-2, -3, 72, 56], line: 30,
+      h: [[10, 30, 46], [9, 40, 27], [7, 58, 34], [11, 10, 34]],
+      a: [[4, 28, 30], [5, 42, 30.5], [3, 14, 31], [2, 56, 31], [6, 34, 40], [1, 34, 2.5]],
+      ball: [30, 46],
+      s: '10番が前を向いてボールを持ち、パスを出そうとしている。9番（あなた）は相手DFラインより前にいる。',
+      q: '9番は今どうするべき？',
+      hint: 'オフサイドかどうかは、いつの瞬間の位置で決まる？',
+      opts: [
+        { k: 'A', l: '相手の背後で、そのままパスを待つ', sc: 0, mk: [40, 27],
+          why: '今の位置でパスが出ると、オフサイドの反則になります。' },
+        { k: 'B', l: 'いったんラインの手前に戻り、パスが出る瞬間に裏へ走る', sc: 2, ar: [[[40, 33], [46, 14], 'run']],
+          why: 'パスが出た瞬間にラインの手前にいればオフサイドではありません。走りながら受けるので、DFより先にボールに届きます。' },
+        { k: 'C', l: 'ボールに近づいて、足元でもらう', sc: 1, mk: [36, 40],
+          why: '反則にはなりませんが、相手DFの前で受けるだけです。ゴールに近づくチャンスにはつながりにくい選択です。' }
+      ],
+      play: [
+        { m: { h9: [40, 33] } },
+        { m: { h9: [46, 14], a5: [44, 20] }, b: [46, 14] },
+        { b: [36, 0.5] }
+      ],
+      ex: 'オフサイドかどうかは「パスが出た瞬間」の位置で決まります。その瞬間に相手陣内で、ボールより前、かつ相手の後ろから2人目（多くはDFライン）よりゴールに近いとオフサイド。ラインの手前で待ち、パスが出るのと同時に走り出すのがコツです。',
+      key: ['オフサイド', 'パスが出た瞬間に、相手の後ろから2人目より前にいると反則。ラインの手前から動き出せばOK。']
+    }
+  ]
+};
+</script>
+<script>
+// Lv.2 中級 — チーム戦術
+window.LEVELS = window.LEVELS || [];
+window.LEVELS[1] = {
+  id: 'team', no: 2, name: '中級', title: 'チーム戦術',
+  who: '経験のある選手・中高生', feat: 'ほかの選択肢の評価つき',
+  q: [
+    {
+      t: '縦パスのコースがない', ph: 'atk', me: 'h4', view: [-2, 16, 72, 58],
+      h: [[4, 26, 68], [8, 30, 50], [9, 36, 34], [6, 42, 62], [2, 58, 62], [11, 12, 38]],
+      a: [[10, 27.5, 59], [8, 44, 55], [4, 35, 30], [5, 46, 30], [3, 18, 32]],
+      ball: [26, 68],
+      s: 'センターバックの4番（あなた）がボールを持っている。8番へのパスコースは、相手10番がふさいでいる。',
+      q: '前進するために、4番はどうする？',
+      opts: [
+        { k: 'A', l: '8番へ強引に縦パスを通す', sc: 0, ar: [[[26, 68], [30, 51.5], 'pass']], at: [34, 54],
+          why: '相手10番がパスコース上にいます。通ったとしても、8番は背中から寄せられて前を向けません。' },
+        { k: 'B', l: '降りてくる9番に当て、9番から8番へ落とす', sc: 2,
+          ar: [[[26, 68], [39, 47.5], 'pass'], [[36, 34], [40, 44.5], 'run']], at: [44, 50],
+          why: '相手10番は8番の背後にいます。9番を経由すれば、8番は前を向いた状態でボールを受けられます。' },
+        { k: 'C', l: '右サイドバックの2番へ横パスでやり直す', sc: 1, ar: [[[26, 68], [56.5, 62.5], 'pass']], at: [51, 58.5],
+          why: '安全ですが前進はできません。相手に守備を整える時間を与えます。' }
+      ],
+      play: [
+        { m: { h9: [40, 46], a4: [38, 40] } },
+        { b: [40, 46] },
+        { m: { h8: [32, 47] }, b: [32, 47] },
+        { m: { h11: [22, 22] }, b: [22, 22] }
+      ],
+      ex: '直接パスが通らないときは、別の選手を経由します。9番が降りて受け、前向きの8番に落とす。相手10番は8番の背後にいるので、8番は前を向いた状態でボールを持てます。「受け手」と「次の受け手」をセットで考えるのが3人目の動きです。',
+      key: ['3人目の動き', 'パスの出し手と受け手以外の「3人目」が関わり、前向きの選手にボールを届けるコンビネーション。']
+    },
+    {
+      t: '相手CBがボールを持った', ph: 'def', me: 'h9', view: [-2, -3, 72, 50],
+      h: [[9, 34, 22], [10, 33, 33], [11, 12, 36], [7, 56, 36], [8, 24, 40]],
+      a: [[1, 34, 2.5], [4, 24, 13], [5, 44, 13], [3, 6, 24], [2, 62, 24], [6, 34, 28]],
+      ball: [24, 13],
+      s: '相手が後ろからパスをつないで攻撃を始めようとしている。相手CBの4番がボールを持った。',
+      q: '前線の9番（あなた）は、どう寄せる？',
+      opts: [
+        { k: 'A', l: 'ボールを持つ4番へ、まっすぐ全力で寄せる', sc: 1, ar: [[[34, 22], [26.5, 15], 'run']], at: [30, 9],
+          why: '勢いはありますが、横の5番へのパスコースが空いたままです。かわされると、9番の頑張りが無駄になります。' },
+        { k: 'B', l: '5番へのコースを背中で消しながら、カーブを描いて寄せる', sc: 2, ar: [[[34, 22], [27.5, 14.5], 'run', [35, 14]]], at: [38, 10],
+          why: '背中で横のパスコースを消したので、4番はタッチライン側の3番へ出すしかありません。どこで奪うかをチームで決められます。' },
+        { k: 'C', l: 'その場で待ち、相手のミスを待つ', sc: 0, mk: [34, 22],
+          why: 'プレッシャーがなく、相手は自由に前を向いて前進できます。' }
+      ],
+      play: [
+        { m: { h9: [27.5, 14.5] } },
+        { b: [6, 24] },
+        { m: { h11: [9, 28], h8: [16, 32], h10: [24, 27], h9: [16, 18] } },
+        { m: { h11: [7.5, 25.5] }, b: [7.5, 25.5] }
+      ],
+      ex: 'ボールに寄せるときは「どこに追い込むか」をセットで考えます。カーブを描きながら寄せ、自分の背中で横のパスコースを消す（カバーシャドウ）。相手はタッチライン側へパスするしかなくなり、タッチラインを「もう1人の味方」にして囲めます。',
+      key: ['カバーシャドウ', '寄せながら自分の体の後ろにパスコースを隠すこと。相手の選択肢を一方向に限定する。']
+    },
+    {
+      t: 'ボールを奪った！', ph: 'tr', me: 'h6', view: [-2, -3, 72, 80],
+      h: [[6, 30, 62], [9, 36, 36], [7, 56, 50], [11, 10, 46], [8, 40, 56], [4, 26, 72], [5, 42, 72]],
+      a: [[4, 26, 38], [5, 42, 38], [1, 34, 2.5], [8, 32, 58], [10, 44, 61], [3, 12, 60], [2, 58, 64], [9, 34, 70]],
+      ball: [30, 62],
+      s: '6番（あなた）が自陣でボールを奪った。相手は攻撃に人数をかけていて、後ろに残っているDFは2人だけ。',
+      q: '6番の最初の判断は？',
+      opts: [
+        { k: 'A', l: '後ろの4番に戻し、落ち着いて組み立て直す', sc: 0, ar: [[[30, 62], [27, 70.5], 'pass']], at: [21, 66],
+          why: '相手に戻る時間を与え、せっかくの数的優位を自分から手放してしまいます。' },
+        { k: 'B', l: '右の7番が走るスペース（相手DFの背後）へ、すぐ縦パス', sc: 2,
+          ar: [[[30, 62], [55, 31], 'pass'], [[56, 50], [56, 33], 'run']], at: [61, 28],
+          why: '相手のDFは2人だけ。人が走るよりボールのほうが速いので、まず背後への縦パスで一気にゴールへ近づきます。' },
+        { k: 'C', l: '自分でドリブルして前へ運ぶ', sc: 1, ar: [[[30, 62], [32, 48], 'drib']], at: [27, 46],
+          why: '前進はできますが、パスより時間がかかります。その間に相手が戻ってきます。' }
+      ],
+      play: [
+        { m: { h7: [56, 32], h9: [38, 30] }, b: [56, 32] },
+        { m: { h7: [50, 18], h9: [36, 20], a5: [44, 26], a4: [32, 26] }, b: [50, 18] },
+        { b: [36.5, 19] },
+        { b: [33, 0.5], m: { a1: [36, 3] } }
+      ],
+      ex: 'ボールを奪った直後は、相手の陣形がまだ攻撃の形のままで、守備の人数が足りていません。この数秒が最大のチャンスです。人が走るよりボールのほうが速いので、まず相手の背後への縦パスを狙います。',
+      key: ['ポジティブ・トランジション', '守備から攻撃への切り替え。奪った直後の数秒で、相手が戻る前に前進する。']
+    },
+    {
+      t: 'ゴール前でボールを失った', ph: 'tr', me: 'h10', view: [-2, -3, 72, 58],
+      h: [[10, 35, 29], [8, 47, 30], [9, 36, 18], [7, 56, 22], [6, 34, 42], [4, 28, 52], [5, 42, 52]],
+      a: [[8, 40, 24], [1, 34, 2.5], [4, 28, 10], [5, 44, 10], [9, 26, 46], [7, 58, 44]],
+      ball: [40, 24],
+      s: '相手ゴール前で攻撃していたが、ボールを相手8番に奪われた。相手のFWは前線で待っている。',
+      q: 'ボールの近くにいる10番（あなた）たちは？',
+      opts: [
+        { k: 'A', l: '全員すぐに自陣へ戻り、守備を整える', sc: 1,
+          ar: [[[35, 29], [35, 43], 'run'], [[47, 30], [47, 44], 'run']], at: [41, 46],
+          why: '安全ですが、相手は落ち着いて前を向き、前進できます。高い位置で奪い返すチャンスを捨てています。' },
+        { k: 'B', l: '近くの3人ですぐにボール保持者を囲み、奪い返す', sc: 2,
+          ar: [[[35, 29], [38.3, 25.8], 'run'], [[47, 30], [42.6, 26.4], 'run'], [[36, 18], [38.8, 21.6], 'run']], at: [47, 20],
+          why: '奪った相手はまだ前を向けておらず、味方のサポートもありません。一斉に囲めば、高い位置ですぐに奪い返せます。' },
+        { k: 'C', l: '悔しがって、その場で立ち止まる', sc: 0,
+          why: '相手に時間とスペースを与え、カウンターの起点を自由にさせてしまいます。' }
+      ],
+      play: [
+        { m: { h10: [38, 26], h8: [42.6, 26.6], h9: [39, 21.5] } },
+        { m: { a8: [41, 23.5] }, b: [37.5, 26.5] },
+        { m: { h7: [48, 12] }, b: [48, 12] },
+        { b: [37, 0.5], m: { a1: [38, 3] } }
+      ],
+      ex: 'ボールを失った直後、奪った相手はまだ攻撃の準備ができていません。近くの選手が一斉に囲めば、高い位置で奪い返せて、すぐにゴールのチャンスになります。ただし「誰が行き、誰が残るか」を決めておかないと、外されたときに一気にピンチになります。',
+      key: ['ゲーゲンプレス（即時奪回）', 'ボールを失った直後に、近くの選手で囲んですぐ奪い返す守備。']
+    },
+    {
+      t: 'ウイングが1対1', ph: 'atk', me: 'h2', view: [-2, -3, 72, 56],
+      h: [[7, 55, 32], [2, 54, 46], [9, 34, 16], [10, 40, 36], [8, 28, 42], [11, 10, 26]],
+      a: [[3, 56, 25], [5, 44, 18], [4, 30, 18], [2, 14, 22], [6, 34, 30], [1, 34, 2.5]],
+      ball: [55, 32],
+      s: '右ウイングの7番がボールを持ち、相手3番と1対1で向かい合っている。',
+      q: '右サイドバックの2番（あなた）は？',
+      opts: [
+        { k: 'A', l: '7番の外側を追い越して走る', sc: 2, ar: [[[54, 46], [64, 19], 'run', [65, 40]]], at: [64, 14],
+          why: '相手3番は「7番」と「走り込む2番」のどちらを見るか迷います。どちらを選んでも、もう一方が空きます。' },
+        { k: 'B', l: '後ろに残って、バックパスの受け手になる', sc: 1, mk: [54, 46],
+          why: '逃げ道を作る意味はありますが、相手3番を迷わせることはできません。7番は1人で突破するしかありません。' },
+        { k: 'C', l: '7番のすぐ横に寄って、短いパスを受ける', sc: 0, ar: [[[54, 46], [50.5, 34.5], 'run']], at: [46, 38],
+          why: '同じスペースに2人が集まり、相手3番1人で2人とも見られます。' }
+      ],
+      play: [
+        { m: { h2: [64, 18], a3: [59, 22] } },
+        { m: { h7: [47, 24] }, b: [47, 24] },
+        { b: [34.5, 15] },
+        { b: [33, 0.5], m: { a1: [31, 3] } }
+      ],
+      ex: '2番が外を追い越すと、相手3番は「ボールを持つ7番」と「走り込む2番」のどちらを見るか迷います。外を見れば7番が中へ、7番に残れば2番へパス。1人で2つの選択肢を守らせるのがオーバーラップの狙いです。内側を追い越す「アンダーラップ」も同じ考え方です。',
+      key: ['オーバーラップ', 'ボール保持者の外側を、後ろから追い越す動き。相手DFに2択を迫る。']
+    },
+    {
+      t: 'ボールがサイドへ移った', ph: 'def', view: [-2, 50, 72, 58],
+      h: [[3, 14, 90], [5, 28, 92], [4, 40, 92], [2, 54, 90], [11, 14, 77], [8, 28, 78], [6, 40, 78], [7, 54, 77], [9, 30, 62], [10, 42, 60], [1, 34, 102]],
+      a: [[7, 10, 70], [10, 24, 69], [8, 38, 64], [9, 34, 84], [11, 62, 74]],
+      ball: [10, 70],
+      s: '4-4-2で守備ブロックを組んでいる。相手がボールを左サイドへ運んだ。',
+      q: 'ブロック全体はどう動く？',
+      opts: [
+        { k: 'A', l: 'ボール側へ全体でスライドし、逆サイドは捨てる', sc: 2,
+          ar: [[[40, 78], [32, 78], 'run'], [[40, 92], [32, 92], 'run']], at: [22, 85],
+          why: 'ボールの近くで数的優位を作れます。選手同士の距離も保たれ、ブロックの間を通されません。' },
+        { k: 'B', l: '各自が自分のマークする相手についていく', sc: 1,
+          why: '人についていくと選手同士の間隔がバラバラになり、ブロックの間にパスを通されやすくなります。' },
+        { k: 'C', l: '中央の位置を保ったまま、動かない', sc: 0,
+          why: 'ボールの近くで相手のほうが多い状態になり、サイドを簡単に突破されます。' }
+      ],
+      play: [
+        { m: { h3: [8, 88], h5: [20, 90], h4: [31, 91], h2: [44, 90], h11: [9, 75], h8: [20, 75], h6: [30, 77], h7: [43, 76], h9: [24, 64], h10: [34, 63] } },
+        { m: { h11: [11, 72], h8: [20, 71] } }
+      ],
+      ex: 'ボールがサイドにあるとき、逆サイドの相手は遠く、すぐには使えません。全員がボール側へ寄ることで、ボールの近くで数的優位をつくり、選手同士の距離も短く保てます。逆サイドへ大きく展開されたら、ボールが空中にある間に全体でスライドし直します。',
+      key: ['スライド', 'ボールの位置に合わせて、守備ブロック全体が横に移動すること。ボール周辺を密にする。']
+    }
+  ]
+};
+</script>
+<script>
+// Lv.3 上級 — 構造と指導（指導ポイント・練習メニューつき）
+window.LEVELS = window.LEVELS || [];
+window.LEVELS[2] = {
+  id: 'coach', no: 3, name: '上級', title: '構造と指導',
+  who: '指導者・分析が好きな人', feat: '指導ポイント・練習メニューつき',
+  q: [
+    {
+      t: '2トップが同数でプレス', ph: 'atk', me: 'h6', view: [-2, 50, 72, 58],
+      h: [[1, 34, 101], [4, 24, 93], [5, 44, 93], [6, 34, 80], [2, 62, 78], [3, 6, 78], [8, 24, 66], [10, 44, 64]],
+      a: [[9, 26, 86], [10, 42, 86], [8, 34, 76], [7, 54, 70], [11, 14, 70]],
+      ball: [24, 93],
+      s: '自陣からのビルドアップ。相手2トップがCB2人に1人ずつ寄せてきて、後ろは2対2の同数になっている。',
+      q: '安定して前進するために、6番（あなた）はどう動く？',
+      opts: [
+        { k: 'A', l: 'CBの間に降りて、後ろを3枚にする', sc: 2, ar: [[[34, 80], [34, 92], 'run']], at: [38, 96],
+          why: '後ろが3対2になり、相手2トップでは3人を見きれません。CBが大きく開いて、ボールを運ぶ余裕が生まれます。' },
+        { k: 'B', l: '前線へロングボールを蹴らせる', sc: 1, ar: [[[24, 93], [43, 65], 'pass']], at: [49, 68],
+          why: 'プレスは回避できますが、前線での競り合いになり、ボールを保持できる確率は下がります。相手の圧力が非常に強いときの選択肢です。' },
+        { k: 'C', l: 'その場で縦パスを受ける', sc: 0, ar: [[[24, 93], [32.8, 81.5], 'pass']], at: [27, 82],
+          why: '6番は背中に相手8番を背負っています。ここで奪われれば、自陣ゴール前で即ピンチです。' }
+      ],
+      play: [
+        { m: { h6: [34, 92], h4: [16, 91], h5: [52, 91], a9: [23, 87], a10: [44, 88] }, b: [16, 91] },
+        { m: { h4: [16, 80] }, b: [16, 80] },
+        { m: { a11: [15, 75] }, b: [24, 66] }
+      ],
+      ex: '2対2の同数では、相手のプレスにはまりやすくなります。そこで「+1」をどこから作るかを考えます。ボランチが降りる、GKを使う、SBを下げる、など。ここでは6番が降りて3対2となり、CBがボールを運ぶ余裕が生まれます。',
+      key: ['サリーダ・ラボルピアーナ', 'ボランチがCBの間に降り、後方を3枚にしてビルドアップの数的優位（+1）を作る方法。'],
+      coach: '答えを1つに固定しないこと。「今、後ろは何対何？」「+1はどこから作れる？」と問いかけ、選手に選ばせる。相手が3枚で来たら次はどうするか、まで考えさせると応用が利く。',
+      drill: '3対2のビルドアップゲーム（30×25m）。CB2人＋ボランチ（またはGK）対 FW2人。ドリブルでラインを越えるか、ライン上の味方に通せば1点。慣れたら守備を1人足して3対3にし、+1の作り方を変えさせる。'
+    },
+    {
+      t: '同じレーンに2人', ph: 'atk', me: 'h7', view: [-2, -3, 72, 58], lanes: true,
+      h: [[2, 62, 44], [7, 62, 30], [9, 34, 14], [8, 40, 40], [10, 28, 30], [11, 6, 26], [6, 34, 50]],
+      a: [[3, 58, 24], [5, 44, 20], [4, 30, 20], [2, 12, 22], [7, 55, 50], [8, 46, 34], [6, 34, 36], [1, 34, 2.5]],
+      ball: [62, 44],
+      s: '右サイドバックの2番がボールを持っている。前にいる右ウイングの7番（あなた）と、同じ大外のレーンに縦に並んでいる。',
+      q: '誰がどう動くと良い？',
+      opts: [
+        { k: 'A', l: '7番が右のハーフスペースへ入る', sc: 2, ar: [[[62, 30], [50.5, 27.5], 'run']], at: [50, 32],
+          why: '外は2番、内は7番。相手3番は中の7番と外の2番の間で迷い、CBとの距離も広がります。' },
+        { k: 'B', l: '2番も7番も、今の位置のまま', sc: 0,
+          why: '相手3番1人で2人を見られる状態です。パスの角度もなく、前進が詰まります。' },
+        { k: 'C', l: '8番も右サイドへ寄り、3人で崩す', sc: 1, ar: [[[40, 40], [57.5, 36.5], 'run']], at: [52, 42],
+          why: '人数は増えますが、中央が手薄になります。ここで奪われると中央を一気に使われます。' }
+      ],
+      play: [
+        { m: { h7: [49, 27], a3: [56, 25], a5: [46, 21] } },
+        { b: [49, 27] },
+        { m: { h2: [64, 14], a3: [52, 25] }, b: [64, 14] },
+        { m: { h9: [36, 8] }, b: [36, 8] }
+      ],
+      ex: 'ピッチを縦に5本のレーンに分けて考えると、立ち位置を整理しやすくなります。同じレーンに2人が縦に並ぶと、相手1人で2人を見られ、パスの角度もありません。7番がハーフスペースに入れば、相手3番は迷い、CBとの間も広がります。',
+      key: ['ハーフスペース', '5レーンのうち、中央とサイドの間のレーン。相手の守備の担当があいまいになりやすい。'],
+      coach: '「同じレーンに2人並ばない」を禁止ルールとして覚えさせるより、「隣のレーン・違う高さ」に立つと相手がどう反応するかを体験させる。相手DFが誰を見ているかを観察させるのがポイント。',
+      drill: 'マーカーで5レーンを示した8対8。ボール保持側が同じレーンに縦に2人並んだら相手ボールになる制約ルール。慣れたら制約を外し、自然にできているか確認する。'
+    },
+    {
+      t: 'CBに捕まっている9番', ph: 'atk', me: 'h9', view: [-2, -3, 72, 62],
+      h: [[9, 34, 21], [11, 10, 26], [7, 58, 26], [10, 22, 38], [8, 44, 42], [6, 30, 52]],
+      a: [[4, 30, 18], [5, 40, 18], [3, 14, 20], [2, 54, 20], [6, 42, 31], [8, 22, 43], [1, 34, 2.5]],
+      ball: [30, 52],
+      s: '相手CBの4番と5番が、9番（あなた）を挟むようにしっかり捕まえている。相手の最終ラインは高い。',
+      q: '9番の役割をどう変える？',
+      opts: [
+        { k: 'A', l: '中盤まで降りて、相手CBを引き出す', sc: 2, ar: [[[34, 21], [34, 34], 'run']], at: [30, 31],
+          why: 'CBがついてくれば最終ラインに穴が空き、ウイングが斜めに走り込めます。ついてこなければ9番が前を向いてフリーで受けられます。' },
+        { k: 'B', l: 'CBの間で、さらに深く張り続ける', sc: 1, mk: [34, 13],
+          why: 'CBを最終ラインに釘付けにはできますが、2対1で囲まれたままで状況は変わりません。' },
+        { k: 'C', l: '自陣深くまで下がって、ボールを受けにいく', sc: 0, ar: [[[34, 21], [34, 56], 'run']], at: [38, 57],
+          why: '相手の最終ラインに何の影響も与えず、前線が無人になります。' }
+      ],
+      play: [
+        { m: { h9: [34, 36], a4: [34, 31] } },
+        { m: { h11: [24, 12], h7: [46, 12] }, b: [24, 12] },
+        { b: [32, 0.5], m: { a1: [31, 3] } }
+      ],
+      ex: '相手CBが9番を捕まえにくるなら、その習性を逆に利用します。9番が中盤へ降りると、CBはついていくか迷います。ついてくれば背後に穴が空き、ついてこなければ9番が前を向けます。どちらでも得をするのが偽9番の狙いです。',
+      key: ['偽9番', 'CFが中盤へ下がってプレーし、相手CBを引き出して背後のスペースを作る役割。'],
+      coach: '選手には「CBがついてきたら背後、ついてこなければ前を向く」というシンプルな2択で判断させる。降りる前に相手CBの位置を見る習慣（スキャン）を、ボールがないときから意識させる。',
+      drill: 'ゾーンを分けた6対5＋GK。FWが中盤ゾーンに降りたらウイングが背後を狙うパターンを反復し、最後はフリーマッチで自分たちで判断させる。'
+    },
+    {
+      t: '攻撃中の後ろの備え', ph: 'atk', me: 'h3', view: [-2, 8, 72, 64],
+      h: [[8, 48, 28], [2, 64, 30], [3, 4, 32], [6, 34, 38], [4, 26, 60], [5, 42, 60], [10, 40, 20], [9, 32, 15], [7, 56, 18], [11, 14, 19]],
+      a: [[10, 35, 46], [9, 30, 55], [11, 54, 52], [6, 42, 30], [8, 28, 29], [2, 60, 24], [3, 12, 24], [4, 28, 13], [5, 40, 13]],
+      ball: [48, 28],
+      s: '相手陣内で攻撃中。両サイドバックが高い位置をとり、後ろにはCB2人だけ。相手は前線に3人を残している。',
+      q: 'ボールを失ったときに備えて、最も効果的な修正は？',
+      opts: [
+        { k: 'A', l: '左SBの3番（あなた）が内側に入り、6番の横で中央を固める', sc: 2, ar: [[[4, 32], [23, 43.5], 'run']], at: [18, 48],
+          why: '中央のカウンター経路を消せます。奪われた直後に、相手10番をすぐ囲める位置です。' },
+        { k: 'B', l: '両SBとも高い位置のまま、後ろはCB2人に任せる', sc: 0,
+          why: '奪われた瞬間、CB2人で相手3人のカウンターを受けることになります。最も危険な配置です。' },
+        { k: 'C', l: '6番を最終ラインまで下げ、後ろを3枚にする', sc: 1, ar: [[[34, 38], [34, 55.5], 'run']], at: [38, 52],
+          why: '後ろは安定しますが、6番がいた中央のスペースが空き、こぼれ球を拾われます。' }
+      ],
+      play: [
+        { m: { h3: [24, 44] } },
+        { b: [35, 46] },
+        { m: { h6: [36, 42.5], h3: [31.5, 47] } },
+        { b: [31.5, 47] }
+      ],
+      ex: '攻撃しているときから「失ったらどうなるか」を準備しておくのがレストディフェンスです。両SBが高いと、奪われた瞬間にCB2人で相手3人を相手にすることになります。SBが内側に入れば中央の経路を消し、奪われた直後に相手を囲めます（偽SB）。',
+      key: ['レストディフェンス', '攻撃中から、ボールを失ったときに備えて後方に残しておく守備の配置。'],
+      coach: '攻撃の配置と守備の準備を別々に教えない。攻撃の練習中に一度プレーを止め、「今失ったら誰が誰を見る？」と確認する。後ろに残す人数は「相手FWの数＋1」が目安。',
+      drill: '8対8＋GK。ボール保持チームは常に後方に「相手FWの数＋1」人を残す制約。奪われてから5秒以内に奪い返したら2点。'
+    },
+    {
+      t: 'アンカーを使わせない', ph: 'def', me: 'h9', view: [-2, 24, 72, 64],
+      h: [[9, 32, 50], [10, 40, 50], [11, 12, 64], [8, 28, 66], [6, 40, 66], [7, 56, 64], [3, 14, 80], [5, 28, 82], [4, 40, 82], [2, 54, 80]],
+      a: [[4, 26, 32], [5, 42, 32], [6, 34, 44], [3, 6, 46], [2, 62, 46], [8, 22, 58], [10, 46, 58], [9, 34, 74]],
+      ball: [26, 32],
+      s: '4-4-2で中盤に守備ブロックを組んでいる。相手はCBの4番がボールを持ち、2トップの間にアンカーの6番がいる。',
+      q: '9番（あなた）を起点に、どこで奪う？',
+      opts: [
+        { k: 'A', l: 'アンカーへのコースを背中で消しながら4番へ寄せ、SBへ出させる', sc: 2,
+          ar: [[[32, 50], [28.6, 38.3], 'run', [35, 41]]], at: [22, 40],
+          why: '中央を消されたCBは、サイドバックへ出すしかありません。サイドへ出た瞬間が、全体で圧縮するプレスの合図です。' },
+        { k: 'B', l: '2トップがCB2人に、それぞれ全力でプレス', sc: 1,
+          ar: [[[32, 50], [27, 34], 'run'], [[40, 50], [41.5, 34], 'run']], at: [46, 40],
+          why: 'CBへの圧力は強まりますが、2人の間のアンカーが完全にフリー。中央を一本通されると、2人とも置き去りになります。' },
+        { k: 'C', l: '2トップも下がってブロックに加わり、プレスはしない', sc: 1,
+          why: '失点のリスクは低いですが、主導権を相手に渡します。リードしている終盤など、試合状況によっては正しい選択です。' }
+      ],
+      play: [
+        { m: { h9: [28.6, 38.3], h10: [38, 40] } },
+        { b: [6, 46] },
+        { m: { h11: [9, 50], h8: [18, 55], h9: [16, 42], h10: [30, 44], h6: [30, 62], h7: [44, 62], h3: [10, 72], h5: [22, 76], h4: [34, 78], h2: [46, 76] } },
+        { m: { h11: [7.5, 48] }, b: [7.5, 48] }
+      ],
+      ex: '4-4-2の弱点は、2トップの間にいるアンカーを使われること。9番は寄せながら背中でアンカーへのコースを消し、相手CBにサイドバックへのパスを選ばせます。サイドへ出た瞬間がプレスの合図（トリガー）。タッチライン際で全体が圧縮し、奪いにいきます。',
+      key: ['プレストラップ', 'あえてサイドへのパスを誘い、タッチライン際で囲んで奪う組織的な守備。'],
+      coach: 'トリガー（プレス開始の合図）をチームの共通言語にする。サイドバックへのパス、背中向きのトラップ、浮き球など。「誰が最初に出るか」「出た選手の背後を誰が埋めるか」まで決めておく。',
+      drill: 'ハーフコートの8対6。保持側はCBから開始。守備側はサイドのゾーンで奪ったら、5秒以内のシュートで2点。トリガーが来るまで中央を閉じて待てたかを評価する。'
+    },
+    {
+      t: '毎回バックパスを選ぶ選手', ph: 'coach', me: 'h8', view: [-2, 16, 72, 60],
+      h: [[8, 34, 52], [9, 40, 32], [4, 26, 68], [5, 42, 68], [7, 58, 40], [11, 10, 40]],
+      a: [[4, 32, 26], [5, 48, 26], [6, 26, 44], [8, 44, 46], [10, 37, 60]],
+      ball: [34, 52],
+      s: '練習試合。8番の選手は、前の9番がフリーでも毎回バックパスを選んでしまう。あなたはコーチとして、今プレーを止めた。',
+      q: 'コーチとしての第一声は？',
+      opts: [
+        { k: 'A', l: '「なんで前に出さないんだ！9番がフリーだったぞ」と答えを伝える', sc: 1,
+          why: '答えは伝わりますが、選手が自分で見つける機会がなくなります。時間のない試合中なら、短く伝えるのも1つの手です。' },
+        { k: 'B', l: '「ボールが来る前、9番はどこにいた？」と問いかけ、選手に答えさせる', sc: 2,
+          ar: [[[34, 52], [39.5, 34.5], 'look']], at: [44, 38],
+          why: '自分の目で見た情報を言葉にすることで、次の場面でも同じ「見る」動作が再現されやすくなります。' },
+        { k: 'C', l: '何も言わず、プレーを再開させる', sc: 0,
+          why: '気づくきっかけがないため、同じ判断が繰り返されます。' }
+      ],
+      play: [
+        { b: [40, 32] },
+        { m: { h9: [42, 19] }, b: [42, 19] }
+      ],
+      ex: '答えを教えれば、その場面は解決します。でも次に似た場面が来たとき、選手が自分で気づけるとは限りません。問いかけて選手自身に答えさせると、「見る→判断する」の流れが本人の中に残ります。答えが出たら同じ場面を再現し、成功させて終わるのが理想です。',
+      key: ['問いかけ型コーチング', '答えを与えるのではなく、選手が自分で気づける質問をする指導法。'],
+      coach: '問いかける → 選手が答える → 同じ場面を再現する → 成功を認める、の4ステップ。バックパスの原因が「見ていない」のか「見えているが自信がない」のかで、次の声かけが変わる。',
+      drill: 'スキャン練習。パスが出る直前にコーチが色付きのマーカーを上げ、受け手はその色を声に出してから前へパス。3対1のロンドに組み込み、首を振るタイミングを習慣にする。'
+    }
+  ]
+};
+</script>
+<script>
+(() => {
+  'use strict';
+  const LV = window.LEVELS;
+  const app = document.getElementById('app');
+  const PH = { atk: '攻撃', def: '守備', tr: '切り替え', coach: '指導場面' };
+  const RES = ['要注意', '悪くない', 'ベスト'];
+  const VERDICT = ['ここは要注意', '悪くない選択', 'ベスト！'];
+  const BO = [1.35, -1.15]; // ボールは選手の足元に少しずらして置く
+  const KEY = 'tacdrill-best-v1';
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const S = { lv: 0, qi: 0, ans: [], done: false, hint: false, timers: [], screen: 'home' };
+
+  const f = n => Math.round(n * 100) / 100;
+  const maxOf = L => L.q.length * 2;
+  const cur = () => LV[S.lv].q[S.qi];
+  const loadBest = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
+  const saveBest = o => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* 保存できない環境では無視 */ } };
+  const total = () => S.ans.reduce((a, x) => a + (x ? x.sc : 0), 0);
+
+  /* ---------- ピッチ描画 ---------- */
+  function field() {
+    let g = '<rect class="grass" x="-8" y="-8" width="84" height="121"/>';
+    for (let i = 0; i < 14; i++) if (i % 2) g += `<rect class="mow" x="-8" y="${i * 7.5}" width="84" height="7.5"/>`;
+    g += `<g class="goal"><rect x="30.34" y="-2.2" width="7.32" height="2.2"/><rect x="30.34" y="105" width="7.32" height="2.2"/></g>
+    <g class="chalk">
+      <rect x="0" y="0" width="68" height="105"/>
+      <line x1="0" y1="52.5" x2="68" y2="52.5"/>
+      <circle cx="34" cy="52.5" r="9.15"/>
+      <rect x="13.84" y="0" width="40.32" height="16.5"/>
+      <rect x="24.84" y="0" width="18.32" height="5.5"/>
+      <path d="M26.69 16.5A9.15 9.15 0 0 0 41.31 16.5"/>
+      <rect x="13.84" y="88.5" width="40.32" height="16.5"/>
+      <rect x="24.84" y="99.5" width="18.32" height="5.5"/>
+      <path d="M26.69 88.5A9.15 9.15 0 0 1 41.31 88.5"/>
+      <path d="M0 1A1 1 0 0 0 1 0M67 0A1 1 0 0 0 68 1M68 104A1 1 0 0 0 67 105M1 105A1 1 0 0 0 0 104"/>
+    </g>
+    <g class="spots"><circle cx="34" cy="52.5" r=".4"/><circle cx="34" cy="11" r=".4"/><circle cx="34" cy="94" r=".4"/></g>`;
+    return g;
+  }
+
+  function lanes(v) {
+    const xs = [13.84, 24.84, 43.16, 54.16];
+    const names = [[6.92, 'サイド'], [19.34, 'ハーフ'], [34, '中央'], [48.66, 'ハーフ'], [61.08, 'サイド']];
+    const y2 = v[1] + v[3];
+    let g = '<g class="lanes">';
+    xs.forEach(x => { g += `<line x1="${x}" y1="${v[1]}" x2="${x}" y2="${y2}"/>`; });
+    names.forEach(([x, n]) => { g += `<text x="${x}" y="${f(y2 - 1.4)}">${n}</text>`; });
+    return g + '</g>';
+  }
+
+  function offside(y) {
+    return `<g class="offside"><line x1="-1" y1="${y}" x2="69" y2="${y}"/><text x="1" y="${y - 0.9}">オフサイドライン</text></g>`;
+  }
+
+  // 矢印: [始点, 終点, 種類, 制御点?]  種類 pass=実線 / run=破線 / drib=波線 / look=点線
+  function arrow(a) {
+    const [p, q, kind, c] = a;
+    const from = c || p;
+    let ux = q[0] - from[0], uy = q[1] - from[1];
+    const L = Math.hypot(ux, uy) || 1; ux /= L; uy /= L;
+    const e = [q[0] - ux * 1.1, q[1] - uy * 1.1];
+    let d;
+    if (kind === 'drib') {
+      const dx = e[0] - p[0], dy = e[1] - p[1], len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len, ny = dx / len, N = Math.max(10, Math.ceil(len * 5)), pts = [];
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const amp = 0.6 * Math.min(1, (len * (1 - t)) / 1.6, (len * t) / 1.2);
+        const w = Math.sin((t * len / 1.8) * Math.PI * 2) * amp;
+        pts.push(f(p[0] + dx * t + nx * w) + ' ' + f(p[1] + dy * t + ny * w));
+      }
+      d = 'M' + pts.join('L');
+    } else if (c) {
+      d = `M${p[0]} ${p[1]}Q${c[0]} ${c[1]} ${f(e[0])} ${f(e[1])}`;
+    } else {
+      d = `M${p[0]} ${p[1]}L${f(e[0])} ${f(e[1])}`;
+    }
+    const bx = q[0] - ux * 1.8, by = q[1] - uy * 1.8, nx = -uy * 0.85, ny = ux * 0.85;
+    const head = `${f(q[0])},${f(q[1])} ${f(bx + nx)},${f(by + ny)} ${f(bx - nx)},${f(by - ny)}`;
+    return { svg: `<path class="ln k-${kind}" d="${d}"/><polygon class="hd" points="${head}"/>`, tip: [q[0] + ux * 2.6, q[1] + uy * 2.6] };
+  }
+
+  function optG(o) {
+    let g = '', at = o.at;
+    (o.ar || []).forEach((a, i) => { const r = arrow(a); g += r.svg; if (!at && i === 0) at = r.tip; });
+    if (o.mk) { g += `<circle class="ring" cx="${o.mk[0]}" cy="${o.mk[1]}" r="2.5"/>`; if (!at) at = o.mk; }
+    if (!at) return '';
+    g += `<g class="bdg" transform="translate(${f(at[0])} ${f(at[1])})"><circle class="hit" r="3.4"/><circle r="1.75"/><text y=".7">${o.k}</text></g>`;
+    return `<g class="og" data-k="${o.k}">${g}</g>`;
+  }
+
+  function players(s) {
+    let g = '';
+    const add = (t, [n, x, y]) => {
+      const id = t + n, me = s.me === id;
+      g += `<g class="pl t-${t}${n === 1 ? ' gk' : ''}${me ? ' me' : ''}" data-id="${id}" style="transform:translate(${x}px,${y}px)">` +
+        (me ? '<circle class="me-ring" r="3.2"/>' : '') +
+        `<circle class="mag" r="2"/><circle class="shine" cx="-.55" cy="-.7" r=".75"/><text class="num" y=".74">${n}</text>` +
+        (me ? '<text class="me-lb" y="-3.9">あなた</text>' : '') + '</g>';
+    };
+    s.a.forEach(p => add('a', p));
+    s.h.forEach(p => add('h', p));
+    return g;
+  }
+
+  const ballXY = p => `translate(${f(p[0] + BO[0])}px,${f(p[1] + BO[1])}px)`;
+
+  function pitchSVG(s) {
+    const v = s.view;
+    const label = `${PH[s.ph]}の場面。青が味方、赤が相手。味方は上に向かって攻めている。`;
+    return `<svg id="pitch" viewBox="${v.join(' ')}" role="img" aria-label="${label}">
+      ${field()}${s.lanes ? lanes(v) : ''}${s.line ? offside(s.line) : ''}
+      <g class="opts-g">${s.opts.map(optG).join('')}</g>
+      <g class="pls">${players(s)}</g>
+      <g class="ball" style="transform:${ballXY(s.ball)}"><circle r=".95"/><circle class="bp" r=".38"/></g>
+    </svg>`;
+  }
+
+  /* ---------- アニメーション ---------- */
+  function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; }
+  function placeAll(s) {
+    const svg = document.getElementById('pitch'); if (!svg) return;
+    svg.classList.add('snap');
+    [['a', s.a], ['h', s.h]].forEach(([t, arr]) => arr.forEach(([n, x, y]) => {
+      const el = svg.querySelector(`[data-id="${t}${n}"]`); if (el) el.style.transform = `translate(${x}px,${y}px)`;
+    }));
+    svg.querySelector('.ball').style.transform = ballXY(s.ball);
+    void svg.getBoundingClientRect();
+    svg.classList.remove('snap');
+  }
+  function play(s) {
+    clearTimers(); placeAll(s);
+    const svg = document.getElementById('pitch');
+    const gap = reduce ? 700 : 1050;
+    s.play.forEach((st, i) => {
+      S.timers.push(setTimeout(() => {
+        if (!svg.isConnected) return;
+        Object.entries(st.m || {}).forEach(([id, [x, y]]) => {
+          const el = svg.querySelector(`[data-id="${id}"]`); if (el) el.style.transform = `translate(${x}px,${y}px)`;
+        });
+        if (st.b) svg.querySelector('.ball').style.transform = ballXY(st.b);
+      }, 350 + i * gap));
+    });
+  }
+
+  /* ---------- 画面: ホーム ---------- */
+  const TWO_COL = '(min-width: 720px) and (min-aspect-ratio: 5/4)';
+  function pips(n) { return [0, 1, 2].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join(''); }
+
+  function home() {
+    S.screen = 'home'; clearTimers();
+    const best = loadBest();
+    app.innerHTML = `
+    <div class="screen home">
+      <div class="h-side">
+        <header class="h-top">
+          <p class="eyebrow">TACTICS BOARD · 105 × 68 m</p>
+          <h1>サッカー戦術ドリル</h1>
+          <p class="lead">ボードの状況を読んで次のプレーを選ぶ。選手が動いて、その理由を見せてくれます。</p>
+        </header>
+        <ul class="key" aria-label="ボードの見方">
+          <li><svg viewBox="-3 -3 6 6" aria-hidden="true"><circle r="2.4" class="k-home"/></svg>味方</li>
+          <li><svg viewBox="-3 -3 6 6" aria-hidden="true"><circle r="2.4" class="k-away"/></svg>相手</li>
+          <li><svg viewBox="-3 -3 6 6" aria-hidden="true"><circle r="2.5" class="k-me"/><circle r="1.6" class="k-home"/></svg>あなた</li>
+          <li><svg class="wide" viewBox="0 -2 16 4" aria-hidden="true"><path class="k-ln" d="M1 0H13"/><path class="k-hd" d="M15 0L12.6-1.3V1.3Z"/></svg>パス</li>
+          <li><svg class="wide" viewBox="0 -2 16 4" aria-hidden="true"><path class="k-ln k-dash" d="M1 0H13"/><path class="k-hd" d="M15 0L12.6-1.3V1.3Z"/></svg>走る</li>
+          <li><svg class="wide" viewBox="0 -2 16 4" aria-hidden="true"><path class="k-ln" d="M1 0Q2 -1.2 3 0T5 0T7 0T9 0T11 0T13 0"/><path class="k-hd" d="M15 0L12.6-1.3V1.3Z"/></svg>ドリブル</li>
+        </ul>
+        <p class="foot">味方はいつも上へ攻めます。採点はベスト2点・悪くない1点・要注意0点。</p>
+      </div>
+      <nav class="levels" aria-label="レベルを選ぶ">
+        ${LV.map((L, i) => {
+          const b = best[L.id];
+          return `<button class="lv" data-start="${i}">
+            <span class="lv-no">Lv.${L.no}<span class="pips" aria-hidden="true">${pips(L.no)}</span></span>
+            <span class="lv-main"><b><em>${L.name}</em>${L.title}</b><small>${L.who} · ${L.feat}</small><small class="tp">${L.q.map(q => q.key[0].replace(/（.*?）/, '')).join('・')}</small></span>
+            <span class="lv-best"><small>最高</small><b>${b == null ? '—' : b}</b><small>/${maxOf(L)}</small></span>
+          </button>`;
+        }).join('')}
+      </nav>
+    </div>`;
+  }
+
+  /* ---------- 画面: 問題 ---------- */
+  function dots() {
+    return LV[S.lv].q.map((_, i) => {
+      const a = S.ans[i];
+      return `<li class="${a ? 'r' + a.sc : (i === S.qi ? 'now' : '')}"></li>`;
+    }).join('');
+  }
+
+  function question() {
+    S.screen = 'play'; S.done = false; S.tab = 'why'; clearTimers();
+    const L = LV[S.lv], s = cur(), v = s.view;
+    app.innerHTML = `
+    <div class="screen play">
+      <nav class="bar">
+        <button class="link back" id="back" aria-label="レベル選択へ戻る">←</button>
+        <span class="bar-lv">Lv.${L.no} ${L.name}</span>
+        <ol class="dots" aria-hidden="true">${dots()}</ol>
+        <span class="bar-q">${S.qi + 1}<small>/${L.q.length}</small></span>
+        <span class="bar-pt"><b id="pt">${total()}</b>点</span>
+      </nav>
+      <div class="stage">
+        <div class="board-area">
+          <div class="board" id="board" style="--ar:${f(v[2] / v[3])}">${pitchSVG(s)}
+            <span class="dir">攻撃 ↑</span>
+            <span class="stamp" id="stamp" hidden></span>
+            ${s.hint ? `<p class="hint-cap" id="hint" hidden>ヒント：${s.hint}</p>` : ''}
+          </div>
+        </div>
+        <section class="panel" id="panel">
+          <div class="qhead">
+            <span class="phase ph-${s.ph}">${PH[s.ph]}</span>
+            <h2 class="qt">${s.t}</h2>
+            ${s.hint ? '<button class="hint-btn" id="hintBtn" aria-pressed="false">ヒント</button>' : ''}
+          </div>
+          <p class="sit">${s.s}</p>
+          <p class="qq">${s.q}</p>
+          <div class="opts" role="group" aria-label="選択肢">
+            ${s.opts.map(o => `<button class="opt" data-k="${o.k}"><span class="k">${o.k}</span><span class="l">${o.l}</span></button>`).join('')}
+          </div>
+        </section>
+      </div>
+    </div>`;
+  }
+
+  function tabList(s, o, best) {
+    const T = [['why', '理由'], ['ex', '解説'], ['key', '用語']];
+    if (s.coach) T.push(['coach', '指導'], ['drill', '練習']);
+    if (s.opts.some(x => x.k !== o.k && x.k !== best.k)) T.push(['rest', 'ほかの選択肢']);
+    return T;
+  }
+
+  function tabBody(id) {
+    const s = cur(), a = S.ans[S.qi];
+    const o = s.opts.find(x => x.k === a.k);
+    const best = s.opts.reduce((p, q) => (q.sc > p.sc ? q : p));
+    const line = (x, tag) => `<p class="oline c${x.sc}"><span class="k k${x.sc}">${x.k}</span><span>${tag}${x.l}</span></p><p>${x.why}</p>`;
+    switch (id) {
+      case 'why':
+        return line(o, 'あなたの選択：') + (o.k !== best.k ? line(best, 'ベスト：') : '');
+      case 'ex': return `<p>${s.ex}</p>`;
+      case 'key': return `<p class="term"><b class="hl">${s.key[0]}</b></p><p>${s.key[1]}</p>`;
+      case 'coach': return `<p>${s.coach}</p>`;
+      case 'drill': return `<p>${s.drill}</p>`;
+      case 'rest': return s.opts.filter(x => x.k !== o.k && x.k !== best.k).map(x => line(x, `${RES[x.sc]}：`)).join('');
+    }
+    return '';
+  }
+
+  function setTab(id) {
+    S.tab = id;
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
+    const b = document.getElementById('tabbody');
+    b.innerHTML = tabBody(id); b.scrollTop = 0;
+  }
+
+  function choose(k) {
+    if (S.done) return;
+    const s = cur(), L = LV[S.lv];
+    const o = s.opts.find(x => x.k === k); if (!o) return;
+    S.done = true;
+    S.ans[S.qi] = { k, sc: o.sc };
+    const best = s.opts.reduce((a, b) => (b.sc > a.sc ? b : a));
+
+    document.querySelectorAll('#pitch .og').forEach(g => {
+      const kk = g.dataset.k, x = s.opts.find(y => y.k === kk);
+      g.classList.add(kk === best.k ? 'r2' : kk === k ? 'r' + x.sc : 'dim');
+    });
+    document.getElementById('pitch').classList.add('answered');
+    const stamp = document.getElementById('stamp');
+    stamp.className = 'stamp v' + o.sc; stamp.textContent = `${k} · ${VERDICT[o.sc]} +${o.sc}点`; stamp.hidden = false;
+    const hint = document.getElementById('hint'); if (hint) hint.hidden = true;
+    document.getElementById('pt').textContent = total();
+    document.querySelector('.dots').innerHTML = dots();
+
+    // 縦並びのときは、パネルの高さを固定してボードの大きさが変わらないようにする
+    const panel = document.getElementById('panel');
+    if (!matchMedia(TWO_COL).matches) {
+      const room = document.querySelector('.stage').clientHeight;
+      panel.style.height = Math.round(Math.max(panel.offsetHeight, Math.min(350, room * 0.55))) + 'px';
+    }
+    const last = S.qi === L.q.length - 1;
+    panel.classList.add('is-fb');
+    panel.innerHTML = `
+      <div class="tabs" role="tablist">${tabList(s, o, best).map(([id, n]) => `<button class="tab" role="tab" data-tab="${id}" aria-selected="${id === 'why'}">${n}</button>`).join('')}</div>
+      <div class="tabbody" id="tabbody" role="tabpanel">${tabBody('why')}</div>
+      <div class="acts">
+        <button class="btn ghost" id="replay" aria-label="動きをもう一度再生">↻ 動き</button>
+        <button class="btn" id="next">${last ? '結果を見る' : '次の問題へ'} →</button>
+      </div>`;
+    play(s);
+  }
+
+  function next() {
+    const L = LV[S.lv];
+    if (S.qi < L.q.length - 1) { S.qi++; question(); } else result();
+  }
+
+  /* ---------- 画面: 結果 ---------- */
+  function result() {
+    S.screen = 'result'; clearTimers();
+    const L = LV[S.lv], sc = total(), mx = maxOf(L), pct = sc / mx;
+    const best = loadBest(); const prev = best[L.id];
+    const isNew = prev == null || sc > prev;
+    if (isNew) { best[L.id] = sc; saveBest(best); }
+    const msg = pct >= 0.85
+      ? (S.lv === 2 ? '構造と言葉の両方で説明できるレベルです。' : '戦術眼あり。次のレベルへ進みましょう。')
+      : pct >= 0.6 ? '原則はつかめています。「要注意」の問題を見直すとさらに伸びます。'
+        : '原則をひとつずつ。解説を読んで、もう一度挑戦してみましょう。';
+    app.innerHTML = `
+    <div class="screen result">
+      <div class="r-head">
+        <p class="eyebrow">Lv.${L.no} ${L.name} · ${L.title}</p>
+        <div class="score"><b>${sc}</b><span>/ ${mx}</span>${isNew ? '<em>自己ベスト</em>' : ''}</div>
+        <p class="msg">${msg}</p>
+      </div>
+      <ol class="rlist">
+        ${L.q.map((q, i) => {
+          const a = S.ans[i] || { sc: 0 };
+          return `<li><span class="chip c${a.sc}">${RES[a.sc]}</span><span class="rt"><b>${q.t}</b><small>${q.key[0]}</small></span></li>`;
+        }).join('')}
+      </ol>
+      <div class="acts">
+        <button class="btn ghost" id="retry">もう一度</button>
+        ${S.lv < LV.length - 1 ? `<button class="btn" id="nextLv">Lv.${L.no + 1} ${LV[S.lv + 1].name}へ →</button>` : ''}
+        <button class="btn ghost" id="toHome">レベル選択</button>
+      </div>
+    </div>`;
+  }
+
+  function start(i) { S.lv = i; S.qi = 0; S.ans = []; question(); }
+
+  /* ---------- イベント ---------- */
+  app.addEventListener('click', e => {
+    const t = e.target;
+    const st = t.closest('[data-start]'); if (st) return start(+st.dataset.start);
+    const op = t.closest('.opt'); if (op) return choose(op.dataset.k);
+    const og = t.closest('#pitch .og'); if (og && !S.done) return choose(og.dataset.k);
+    const tb = t.closest('.tab'); if (tb) return setTab(tb.dataset.tab);
+    const btn = t.closest('button'); const id = btn ? btn.id : '';
+    if (id === 'back' || id === 'toHome') return home();
+    if (id === 'next') return next();
+    if (id === 'replay') return play(cur());
+    if (id === 'retry') return start(S.lv);
+    if (id === 'nextLv') return start(S.lv + 1);
+    if (id === 'hintBtn') {
+      const h = document.getElementById('hint'); h.hidden = !h.hidden;
+      btn.setAttribute('aria-pressed', String(!h.hidden));
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if (S.screen !== 'play' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toUpperCase();
+    if (!S.done && ['A', 'B', 'C'].includes(k)) choose(k);
+    else if (S.done && (e.key === 'ArrowRight')) next();
+  });
+  addEventListener('resize', () => {
+    const p = document.querySelector('.panel.is-fb');
+    if (p && matchMedia(TWO_COL).matches) p.style.height = '';
+  });
+
+  home();
+})();
+</script>
