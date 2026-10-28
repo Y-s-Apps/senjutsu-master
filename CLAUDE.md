@@ -4,6 +4,7 @@
 GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-drill/ （`main` ブランチの直下をそのまま配信）
 作者の個人の GitHub アカウント名は、公開されるファイル・URL・コミットに出さない（組織 Y-s-Apps で公開している）
 同じゲームは Claude のアーティファクトとしても公開している: https://claude.ai/artifact/LvjMNJxWTMbJyGaVZTi5nt
+進め方・ユーザーの好み・経緯・やり残しは `HANDOFF.md`（Claude のプロジェクト機能で開発を続けるためのメモ。プロジェクトの指示の原文もここ）。
 
 ## Layout
 - repo root = 公開サイト。`index.html` と `sw.js` は `dev/build.js` の生成物なので**手で編集しない**。
