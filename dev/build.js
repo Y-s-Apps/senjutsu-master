@@ -93,18 +93,30 @@ fs.writeFileSync(path.join(ROOT, 'index.html'), html);
 
 // 5) service worker（ページ本体はネット優先＝修正がすぐ届く。オフラインでは保存済みのものを使う）
 const sw = `// 戦術マスター service worker — version ${ver}（dev/build.js が生成）
+// - ページ本体（./ と index.html）はネット優先。正常な応答（200）だけを保存し、ネットが使えない・エラーのときは保存済みを出す
+// - アイコン・フォントなど CORE のファイルは保存済み優先（インストール時にブラウザのキャッシュを通さず取得）
+// - それ以外のリクエスト（同じサイトの別ページ・外部）には関わらず、保存もしない
 const CACHE = '${APP_ID}-${ver}';
-const CORE = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'favicon-32.png', ${FONTS.map(f => `'fonts/${f}'`).join(', ')}];
-self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
+const CORE = ['index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'favicon-32.png', ${FONTS.map(f => `'fonts/${f}'`).join(', ')}];
+const PAGE = new URL('./', location).pathname;
+const ASSETS = new Set(CORE.map(u => new URL(u, location).pathname));
+const good = res => res.ok && res.type === 'basic';
+const cached = key => caches.open(CACHE).then(c => c.match(key));
+const keep = (e, key, res) => { const copy = res.clone(); e.waitUntil(caches.open(CACHE).then(c => c.put(key, copy))); };
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('${APP_ID}-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
-  const url = new URL(req.url);
-  if (req.mode === 'navigate' || (url.origin === location.origin && (url.pathname.endsWith('/') || url.pathname.endsWith('index.html')))) {
-    e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put('index.html', copy)); return res; }).catch(() => caches.match('index.html')));
+  const url = new URL(req.url); if (url.origin !== location.origin) return;
+  if (url.pathname === PAGE || url.pathname === PAGE + 'index.html') {
+    e.respondWith(fetch(req).then(
+      res => { if (good(res)) { keep(e, 'index.html', res); return res; } return cached('index.html').then(hit => hit || res); },
+      () => cached('index.html').then(hit => hit || Response.error())));
     return;
   }
-  if (url.origin === location.origin) { e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; }))); return; }
+  if (ASSETS.has(url.pathname)) {
+    e.respondWith(cached(url.pathname).then(hit => hit || fetch(req).then(res => { if (good(res)) keep(e, url.pathname, res); return res; })));
+  }
 });
 `;
 fs.writeFileSync(path.join(ROOT, 'sw.js'), sw);
