@@ -25,6 +25,7 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 1. `dev/src/` を編集
 2. `node dev/check.js` → `node dev/build.js` → 画面を変えたら `python3 dev/test/fit.py`、service worker（`build.js` の sw 部分）を変えたら `python3 dev/test/offline.py`、自己ベストや記録の引っこしを変えたら `python3 dev/test/move.py`
 3. コミットして `main` に push（Pages が1〜2分で更新）。アーティファクトも合わせるなら `dev/dist/artifact.html` を上記 URL へ publish。
+- main には ruleset（`main`）があり、削除と強制 push を禁止している（pull request は不要なので、普通の push は通る）。秘密の値（トークン・鍵など）を含む push は push protection に止められる。push のたびに code scanning（CodeQL）が走る。
 - service worker はページ本体（`./` と `index.html`）をネット優先で取得するので、push 後は再読み込みで新しい版になる。保存するのは正常な応答（200）だけで、ネットが使えない・エラーのときは保存済みのページを出す。アイコン・フォントなど CORE のファイルは保存済み優先。それ以外（`licenses/` などの別ページ）には関わらず、保存もしない。新しい版が有効になると古い版の保存データ（`senjutsu-master-<版>`）を消す。
 - y-s-apps.github.io は組織 Y-s-Apps の Pages すべて（senjutsu-master・uchinoko-biyori・shinpan-dojo・kuratsuku・kamiashi）が共有する1つのオリジン。localStorage・IndexedDB・Cache Storage・service worker は、組織のほかの Pages（とくに `y-s-apps.github.io` という名前のリポジトリを作るとサイト全体の直下になる）からも触れる。保存キーとキャッシュ名はアプリ名で始め、ほかのアプリのものを消さない（2026-10-29 に5つとも確認済み）。ほかの人が書いたものを組織の Pages で公開しない。
 
