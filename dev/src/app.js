@@ -17,9 +17,8 @@
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   // 自己ベストは同じドメイン（y-s-apps.github.io）のほかのページからも書き換えられるので、
   // 読むときに「知っているレベルの id と、0〜満点の整数」だけを残す。壊れた値は捨てる。
-  const loadBest = () => {
-    let raw;
-    try { raw = JSON.parse(localStorage.getItem(KEY)); } catch (e) { raw = null; }
+  // 「記録の引っこし」で読み込んだ記録も、同じ cleanBest() を通す。
+  const cleanBest = raw => {
     const out = {};
     if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
       LV.forEach(L => {
@@ -28,6 +27,11 @@
       });
     }
     return out;
+  };
+  const loadBest = () => {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(KEY)); } catch (e) { raw = null; }
+    return cleanBest(raw);
   };
   const saveBest = o => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* 保存できない環境では無視 */ } };
   const total = () => S.ans.reduce((a, x) => a + (x ? x.sc : 0), 0);
@@ -213,7 +217,10 @@
           <li><svg class="wide" viewBox="0 -2 16 4" aria-hidden="true"><path class="k-ln k-dash" d="M1 0H13"/><path class="k-hd" d="M15 0L12.6-1.3V1.3Z"/></svg>走る</li>
           <li><svg class="wide" viewBox="0 -2 16 4" aria-hidden="true"><path class="k-ln" d="M1 0Q2 -1.2 3 0T5 0T7 0T9 0T11 0T13 0"/><path class="k-hd" d="M15 0L12.6-1.3V1.3Z"/></svg>ドリブル</li>
         </ul>
-        <p class="foot"><span>味方はいつも上（↑）へ攻めます。</span><span>採点：ベスト2点・悪くない1点・要注意0点</span></p>
+        <div class="foot-row">
+          <p class="foot"><span>味方はいつも上（↑）へ攻めます。</span><span>採点：ベスト2点・悪くない1点・要注意0点</span></p>
+          <button class="link move-link" id="moveOpen" aria-haspopup="dialog" aria-label="記録の引っこし・バックアップ">記録の引っこし</button>
+        </div>
       </div>
       <nav class="levels" aria-label="レベルを選ぶ">
         ${LV.map((L, i) => {
@@ -408,9 +415,148 @@
 
   function start(i) { S.lv = i; S.qi = 0; S.ans = []; question(); }
 
+  /* ---------- 記録の引っこし（自己ベストをファイルかコードで持ち出す・読み込む） ----------
+     自己ベストは localStorage なので、URL（オリジン）が変わる・ホーム画面のアプリと Safari・別の端末では引き継がれない。
+     コード: `SENJUTSU1:basic=10,coach=6:xxxx`（末尾4文字は確認用。欠け・書き換えを見つける）。ファイルはこのコードを入れた .txt。
+     読み込んだ記録は信用しない（cleanBest を通す）。今の記録より高いレベルだけを更新するので、読み込みで記録が下がることはない。 */
+  const CODE_V = 'SENJUTSU1';
+  const MOVE_FILE = 'senjutsu-master-kiroku.txt';
+  const MOVE_MAX = 4096; // これより大きいファイル・文字は戦術マスターのものではない
+  const check = s => { // FNV-1a（32bit）を 36 進4文字に
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return (h % 1679616).toString(36).padStart(4, '0');
+  };
+  const makeCode = best => {
+    const body = LV.filter(L => best[L.id] != null).map(L => `${L.id}=${best[L.id]}`).join(',');
+    return `${CODE_V}:${body}:${check(`${CODE_V}:${body}`)}`;
+  };
+  function readCode(text) {
+    const raw = String(text || '');
+    if (raw.length > MOVE_MAX) return { reason: 'big' };
+    const t = raw.normalize('NFKC').replace(/[\s\u200B-\u200D\u2060\uFEFF]+/g, '');
+    if (!t) return { reason: 'empty' };
+    const m = t.match(/SENJUTSU1:([a-z0-9=,]*):([0-9a-z]{4})/i);
+    if (!m) return { reason: /SENJUTSU1/i.test(t) ? 'broken' : 'noprefix' };
+    const body = m[1].toLowerCase();
+    if (check(`${CODE_V}:${body}`) !== m[2].toLowerCase()) return { reason: 'broken' };
+    const o = {};
+    for (const part of body.split(',').filter(Boolean)) {
+      const kv = part.split('=');
+      if (kv.length !== 2 || !/^[a-z]+$/.test(kv[0]) || !/^\d{1,3}$/.test(kv[1])) return { reason: 'broken' };
+      o[kv[0]] = Number(kv[1]);
+    }
+    const best = cleanBest(o);
+    return Object.keys(best).length ? { best } : { reason: 'nodata' };
+  }
+  const MOVE_ERR = {
+    empty: 'コードが空です。貼り付けてから「読み込む」を押してください。',
+    noprefix: '「SENJUTSU1」で始まるコードが見つかりませんでした。戦術マスターで作ったファイルかコードか、確かめてください。',
+    broken: 'コードの一部が欠けているか、変わっています。もう一度コピーし直すか、ファイルで移してください。',
+    big: '大きすぎて読めませんでした。戦術マスターで保存したファイルを選んでください。',
+    nodata: '読み込める記録が入っていませんでした。'
+  };
+  const bestLine = best => LV.map(L => `${L.name} ${best[L.id] == null ? '—' : best[L.id]}/${maxOf(L)}`).join('・');
+
+  async function saveFile(text) {
+    // アーティファクトではホストの保存確認（downloads）、ホーム画面のアプリ・Safari では共有シート（「ファイル」に保存）、どちらもなければ通常のダウンロード
+    const cl = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
+    if (cl) {
+      const dl = await cl.use('downloads').catch(() => null);
+      if (dl) {
+        try { await dl.save({ filename: MOVE_FILE, data: text }); return 'saved'; }
+        catch (e) { return e && e.code === 'declined' ? 'declined' : 'unavailable'; }
+      }
+    }
+    try {
+      const file = new File([text], MOVE_FILE, { type: 'text/plain' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: '戦術マスターの記録' }); return 'shared'; }
+    } catch (e) { if (e && e.name === 'AbortError') return 'declined'; }
+    try {
+      const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+      const a = document.createElement('a'); a.href = url; a.download = MOVE_FILE;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      return 'saved';
+    } catch (e) { return 'unavailable'; }
+  }
+  async function copyCode(el) {
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(el.value); return 'copied'; } } catch (e) { /* 次の方法へ */ }
+    try { el.focus(); el.select(); el.setSelectionRange(0, el.value.length); if (document.execCommand && document.execCommand('copy')) return 'copied'; } catch (e) { /* 次の方法へ */ }
+    return 'selected';
+  }
+
+  let moveReturn = null;
+  function openMove() {
+    const best = loadBest(), has = Object.keys(best).length > 0, code = makeCode(best);
+    moveReturn = document.activeElement;
+    app.insertAdjacentHTML('beforeend', `
+    <div class="sheet-bg" id="mv">
+      <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="mvT">
+        <div class="sheet-head"><h2 id="mvT">記録の引っこし</h2><button class="link sheet-x" id="mvClose" aria-label="閉じる">×</button></div>
+        <p class="sheet-sub">自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。</p>
+        <p class="mv-now" id="mvNow">いまの記録　${esc(bestLine(best))}</p>
+        <h3 class="sheet-h">持っていく</h3>
+        <div class="mv-row"><button class="btn" id="mvSave"${has ? '' : ' disabled'}>ファイルに保存</button><button class="btn ghost" id="mvCopy"${has ? '' : ' disabled'}>コードをコピー</button></div>
+        <textarea class="mv-code mv-out" id="mvOut" rows="2" readonly placeholder="まだ記録がありません" aria-label="記録のコード" autocomplete="off" spellcheck="false">${has ? esc(code) : ''}</textarea>
+        <h3 class="sheet-h">受け取る</h3>
+        <div class="mv-row"><label class="btn ghost mv-file">ファイルを選ぶ<input type="file" id="mvFile" accept=".txt,text/plain"></label></div>
+        <div class="mv-row"><input class="mv-code" id="mvIn" maxlength="${MOVE_MAX}" placeholder="コードを貼り付け" aria-label="受け取るコード" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"><button class="btn ghost" id="mvTake">読み込む</button></div>
+        <p class="mv-msg" id="mvMsg" role="status" aria-live="polite">読み込んだ記録は、いまより高いレベルだけを更新します。</p>
+      </section>
+    </div>`);
+    const sh = document.getElementById('mv');
+    phrase(sh);
+    const msg = t => { const m = sh.querySelector('#mvMsg'); m.textContent = t; phrase(m); };
+    sh.querySelector('#mvClose').addEventListener('click', closeMove);
+    sh.addEventListener('click', e => { if (e.target === sh) closeMove(); });
+    sh.querySelector('#mvSave').addEventListener('click', async () => {
+      const text = `戦術マスターの記録（自己ベスト）\n戦術マスターのホームの「記録の引っこし」→「ファイルを選ぶ」でこのファイルを選ぶと、記録を移せます。\n${makeCode(loadBest())}\n`;
+      const r = await saveFile(text);
+      msg(r === 'shared' ? `共有メニューで「"ファイル"に保存」を選ぶと、${MOVE_FILE} として残ります。`
+        : r === 'saved' ? `${MOVE_FILE} を保存しました。移す先で「ファイルを選ぶ」から選んでください。`
+          : r === 'declined' ? '保存をやめました。'
+            : 'ここではファイルを保存できませんでした。「コードをコピー」を使ってください。');
+    });
+    sh.querySelector('#mvCopy').addEventListener('click', async () => {
+      const r = await copyCode(sh.querySelector('#mvOut'));
+      msg(r === 'copied' ? 'コードをコピーしました。移す先で貼り付けて「読み込む」を押してください。'
+        : 'コードを選びました。出てきたメニューの「コピー」を押してください。');
+    });
+    const take = text => {
+      const r = readCode(text);
+      if (!r.best) return msg(MOVE_ERR[r.reason]);
+      const now = loadBest(), up = [];
+      LV.forEach(L => {
+        const v = r.best[L.id];
+        if (v != null && (now[L.id] == null || v > now[L.id])) { up.push(`${L.name} ${now[L.id] == null ? '—' : now[L.id]}→${v}`); now[L.id] = v; }
+      });
+      if (!up.length) return msg('読み込んだ記録は、いまの記録と同じか低いので、変わりませんでした。');
+      saveBest(now);
+      const nb = sh.querySelector('#mvNow'); nb.textContent = `いまの記録　${bestLine(now)}`; phrase(nb);
+      msg(`記録を移しました（${up.join('、')}）。`);
+    };
+    sh.querySelector('#mvTake').addEventListener('click', () => take(sh.querySelector('#mvIn').value));
+    sh.querySelector('#mvFile').addEventListener('change', async e => {
+      const file = e.target.files && e.target.files[0]; e.target.value = '';
+      if (!file) return;
+      if (file.size > MOVE_MAX) return msg(MOVE_ERR.big);
+      try { take(await file.text()); } catch (err) { msg(MOVE_ERR.noprefix); }
+    });
+    sh.querySelector(has ? '#mvSave' : '#mvFile').focus();
+  }
+  function closeMove() {
+    const sh = document.getElementById('mv'); if (!sh) return;
+    sh.remove();
+    if (S.screen === 'home') { home(); const b = document.getElementById('moveOpen'); if (b) b.focus(); }
+    else if (moveReturn && moveReturn.isConnected) moveReturn.focus();
+  }
+
   /* ---------- イベント ---------- */
   app.addEventListener('click', e => {
     const t = e.target;
+    if (t.closest('#moveOpen')) return openMove();
+    if (t.closest('#mv')) return; // 引っこしの画面の中のボタンは、それぞれのリスナーで扱う
     const st = t.closest('[data-start]'); if (st) return start(+st.dataset.start);
     const op = t.closest('.opt'); if (op) return choose(op.dataset.k);
     const og = t.closest('#pitch .og'); if (og && !S.done) return choose(og.dataset.k);
@@ -427,6 +573,16 @@
     }
   });
   document.addEventListener('keydown', e => {
+    const sh = document.getElementById('mv');
+    if (sh) { // 引っこしの画面: Esc で閉じる、Tab は画面の中だけを回る
+      if (e.key === 'Escape') { e.preventDefault(); closeMove(); return; }
+      if (e.key === 'Tab') {
+        const els = [...sh.querySelectorAll('button:not([disabled]), input')];
+        const i = els.indexOf(document.activeElement);
+        if (e.shiftKey ? i <= 0 : i === els.length - 1) { e.preventDefault(); els[e.shiftKey ? els.length - 1 : 0].focus(); }
+      }
+      return;
+    }
     if (S.screen !== 'play' || e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toUpperCase();
     if (!S.done && ['A', 'B', 'C'].includes(k)) choose(k);

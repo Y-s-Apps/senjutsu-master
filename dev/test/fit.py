@@ -7,6 +7,7 @@
 - 外部（自分のサイト以外）へ通信する    → 失敗
 - CSP に止められたものがある            → 失敗
 - fonts/ のフォントが読み込めない       → 失敗
+- 「記録の引っこし」が画面からはみ出す・Esc で閉じない → 失敗（記録なし・ありの両方）
 --shots を付けると dev/test/shots/ にスクリーンショットを保存する。
 必要なもの: pip install playwright && playwright install chromium
 """
@@ -28,6 +29,8 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
 server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=str(ROOT)))
 threading.Thread(target=server.serve_forever, daemon=True).start()
 BASE = f'http://127.0.0.1:{server.server_port}/'
+SHEET = """() => { const s = document.querySelector('.sheet'); if (!s) return null; const b = s.getBoundingClientRect();
+  return { over: s.scrollHeight - s.clientHeight, out: Math.max(0, Math.ceil(b.bottom - innerHeight), Math.ceil(-b.top)) }; }"""
 FONTS = """async () => { await document.fonts.ready;
   return [...document.fonts].filter(f => f.status === 'loaded').map(f => f.family.replace(/"/g, '') + ' ' + f.weight); }"""
 SHOTS = ROOT / 'dev' / 'test' / 'shots'
@@ -70,6 +73,19 @@ def shot(pg, name):
         pg.screenshot(path=str(SHOTS / f'{name}.png'))
 
 
+def sheet(pg, tag, name):
+    """記録の引っこしを開き、はみ出し（中のスクロール・画面の外）と改行を確かめて閉じる"""
+    pg.click('#moveOpen')
+    r = pg.evaluate(SHEET)
+    if r is None or r['over'] > 0 or r['out'] > 0:
+        fails.append((tag, name, r))
+    bad_breaks.update((tag, x) for x in pg.evaluate(BREAKS))
+    shot(pg, f'{tag}-{name}')
+    pg.keyboard.press('Escape')
+    if pg.evaluate("() => !!document.getElementById('mv')"):
+        fails.append((tag, name, 'Esc で閉じない'))
+
+
 def run(pg, tag, strict):
     pg.goto(BASE + 'index.html')
     loaded.update(pg.evaluate(FONTS))
@@ -78,6 +94,7 @@ def run(pg, tag, strict):
         fails.append((tag, 'home', r))
     bad_breaks.update((tag, x) for x in pg.evaluate(BREAKS))
     shot(pg, f'{tag}-home')
+    sheet(pg, tag, 'move-empty')
     for lv in range(3):
         pg.click(f'[data-start="{lv}"]')
         for qi in range(6):
@@ -112,6 +129,7 @@ def run(pg, tag, strict):
         if lv == 2:
             shot(pg, f'{tag}-result')
         pg.click('#toHome')
+    sheet(pg, tag, 'move')
     loaded.update(pg.evaluate(FONTS))
 
 
