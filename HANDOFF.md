@@ -81,6 +81,7 @@ Claude のプロジェクト機能で開発を続けるためのメモです。�
   - 旧アドレス `Y-s-Apps/senjutsu-drill` からの転送は、作り直しでなくなった
 - 2026-10-30: 「記録の引っこし」を追加（ユーザーの「戦術マスターでも同様のことが起こる可能性があるため、対策しよう」）。kuratsuku を新しい URL へ移すとき、引き継ぎコードが「読み取れませんでした」で戻せず（ユーザーはやり直すことにした）、うちのこ日和でも以前同じことがあってファイルで移した、という経緯。ホームの「記録の引っこし」から、自己ベストをファイル（共有シートで「ファイル」に保存）か短いコード（確認用の文字つき）で持ち出し・読み込みできる。読み込みは高いほうだけ更新。アーティファクトは `downloads` の capability を宣言
 - 2026-10-30: セキュリティ診断⑤（GitHub の設定、ユーザーが操作）。アカウント: 2段階認証を確認、メールアドレスを非公開にして「メールが出る push を止める」をオン、連携アプリ・鍵・トークンを見直し。組織 Y-s-Apps: 2段階認証を必須に、Advanced Security の設定（公開リポジトリなので無料）で5つすべてと今後のリポジトリに secret scanning・push protection・code scanning（CodeQL）・Dependabot をオン、Claude のアクセスは5つすべて。リポジトリごと（5つ）: ruleset `main` で main の削除と強制 push を禁止（pull request は求めない）、Wiki と Projects をオフ。旧名の組織はメンバー非公開・リポジトリなし。組織全体の ruleset は有料プランのみなので、リポジトリを足したら ruleset も足す
+- 2026-10-30: code scanning（CodeQL）の結果を確認。senjutsu-master は `dev/build.js` の「Bad HTML filtering regexp」3件（自分の page.html を正規表現で読んでいた。危険はないが、決まった文字列の置き換えに直して出力は同一）。kuratsuku は33件: 「DOM text reinterpreted as HTML」6件は自分の data-id をそのまま HTML に戻している所（HTML を仕込めないと悪用できない）、「Inclusion of functionality from an untrusted source」2件はアーティファクト版が lz-string を cdnjs から integrity なしで読む所（Pages 版は同梱）、「Incomplete URL substring sanitization」25件はテストのスクリプト。kuratsuku の直しは kuratsuku のプロジェクトで行う（依頼文をユーザーに渡した）
 
 ## 5. やり残し・アイデア
 - ④の後片付け（ユーザーの操作）: kuratsuku は新しい URL をホーム画面に追加（セーブは引き継ぎコードで戻せなかったので、やり直す）。kuratsuku の Claude のプロジェクトは、指示を kuratsuku の HANDOFF.md §1 の文に貼り替え、ナレッジの GitHub を `Y-s-Apps/kuratsuku` で入れ直す。ほかのアプリのプロジェクトも、同期でエラーが出たら GitHub を入れ直す。GitHub Mobile を使っていればサインアウト→サインイン

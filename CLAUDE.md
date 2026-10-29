@@ -13,7 +13,7 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - `dev/src/page.html` — CSS とページ骨格（アーティファクトの書き方: doctype/html/head/body なし、先頭に `<title>`）。
 - `dev/src/app.js` — 画面・ピッチ描画・アニメーション・採点・改行処理（`phrase()`）。`dev/src/data1.js`〜`data3.js` — 問題データ（Lv.1〜3）。
 - `dev/src/budoux.js` — BudouX 0.6.4（Apache-2.0）の日本語パーサを1ファイルにまとめたもの。改行位置を決めるためだけに使う。手で編集しない。
-- `dev/build.js` — script をインライン化して、直下の `index.html`（PWA 用 head・CSP・service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html`（フォントを data: で埋め込んだ1ファイル）を書き出す。ソースに `fonts/` にない文字が出てきたらビルドを止めるので、`python3 dev/fonts/make_fonts.py` を実行してからビルドし直す（要 `pip install fonttools brotli`）。
+- `dev/build.js` — script（`SCRIPT_FILES` に並べたもの。HTML は正規表現で読まず、決まった `<script src>` の文字列を置き換える）をインライン化して、直下の `index.html`（PWA 用 head・CSP・service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html`（フォントを data: で埋め込んだ1ファイル）を書き出す。ソースに `fonts/` にない文字が出てきたらビルドを止めるので、`python3 dev/fonts/make_fonts.py` を実行してからビルドし直す（要 `pip install fonttools brotli`）。
 - `dev/check.js` — 問題データの確認（型・ID・ベストの数・座標など。誤りがあれば終了コード 1）。
 - `dev/test/fit.py` — Playwright でローカルの Web サーバーから開き（`fonts/` の実フォントで測る）、全18問・全タブについて、1画面に収まっているか（縦横どちらもスクロールなし）、行頭に助詞・句読点・閉じ括弧が来ていないか、外部への通信・CSP 違反がないか、フォントが読み込めたかを確認（`--shots` でスクショ）。
 - `dev/test/move.py` — 「記録の引っこし」の確認。ファイル・コードでの持ち出しと読み込み、高いほうだけの更新、切れた・書き換えた・範囲外・HTML を仕込んだ・大きすぎるものを読まないこと。

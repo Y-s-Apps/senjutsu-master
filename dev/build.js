@@ -36,10 +36,24 @@ if (process.argv.includes('--chars')) { process.stdout.write(usedChars()); proce
 const FONTS = fs.readdirSync(path.join(ROOT, 'fonts')).filter(f => f.endsWith('.woff2')).sort();
 
 // 1) 外部 script をインライン化（1ファイルにすると、更新がすぐ届く）
-const page = read('page.html').replace(/<script src="([\w.-]+)"><\/script>/g,
-  (_, f) => `<script>\n${read(f).trim()}\n</script>`);
-if (/<script src=/.test(page)) throw new Error('インライン化できない script が残っています');
-if (/https?:\/\//.test(page.replace(/<script>[\s\S]*?<\/script>/g, ''))) throw new Error('page.html が外部の URL を読み込んでいます（フォントは fonts/ に置く）');
+//    HTML は正規表現で読まない。page.html に書いた <script src="…"></script> を決まった文字列として置き換え、
+//    埋め込んだ中身（SCRIPTS）をそのまま CSP のハッシュに使う。script を足したら SCRIPT_FILES にも足す。
+const SCRIPT_FILES = ['data1.js', 'data2.js', 'data3.js', 'budoux.js', 'app.js'];
+const SW_REG = "if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));";
+const SCRIPTS = [];
+const src = read('page.html');
+if (src.includes('http://') || src.includes('https://')) throw new Error('page.html が外部の URL を読み込んでいます（フォントは fonts/ に置く）');
+let page = src;
+for (const f of SCRIPT_FILES) {
+  const tag = `<script src="${f}"></script>`;
+  const parts = page.split(tag);
+  if (parts.length !== 2) throw new Error(`page.html に ${tag} がちょうど1つありません`);
+  const body = `\n${read(f).trim()}\n`;
+  if (body.toLowerCase().includes('</script')) throw new Error(`${f} に </script が含まれています`);
+  SCRIPTS.push(body);
+  page = parts.join(`<script>${body}</script>`);
+}
+if (page.includes('<script src=')) throw new Error('インライン化できない script が残っています（SCRIPT_FILES に足す）');
 
 // 2) バージョン（日本時間 yyyymmddHHMM）
 const jst = new Date(Date.now() + 9 * 3600e3).toISOString();
@@ -76,14 +90,17 @@ ${headPart}
 </head>
 <body>
 ${bodyPart}
-<script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+<script>${SW_REG}</script>
 </body>
 </html>
 `;
 // CSP（GitHub Pages はヘッダーを設定できないので <meta> で）。script は、このページに埋め込んだものだけをハッシュで許す。
 // 外部への通信はすべて禁止。style 属性を innerHTML で入れているので style だけ 'unsafe-inline'。
-const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
-  .map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
+const inline = [...SCRIPTS, SW_REG];
+if (html.split('<script').length - 1 !== inline.length || !inline.every(s => html.includes(`<script>${s}</script>`))) {
+  throw new Error('index.html の script が、埋め込んだものと一致しません');
+}
+const hashes = inline.map(s => `'sha256-${crypto.createHash('sha256').update(s, 'utf8').digest('base64')}'`);
 const csp = [
   "default-src 'none'", `script-src ${hashes.join(' ')}`, "style-src 'self' 'unsafe-inline'", "font-src 'self'",
   "img-src 'self'", "manifest-src 'self'", "worker-src 'self'", "connect-src 'self'", "base-uri 'none'", "form-action 'none'"
