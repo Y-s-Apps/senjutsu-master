@@ -1,0 +1,154 @@
+--- a/dev/src/app.js
++++ b/dev/src/app.js
+@@ -3,6 +3,8 @@
+   const TM = window.TM; // logic.js（問題の選び方・選択肢の並べ替え・前節の決め方）
+   const LV = window.LEVELS;
+   const CLUB = window.CLUB;
++  const FAV = window.FAV; // お気に入りクラブ（試作）
++  const RIM = (new URLSearchParams(location.search).get('rim') || 'double').replace(/[^a-z]/g, ''); // 試作: マグネットの縁の候補
+   const REC = [...LV, CLUB]; // 自己ベストと出題の履歴を残すもの（id は記録の引っこしのコードにも使う）
+   LV.forEach(L => { L.short = `Lv.${L.no} ${L.name}`; }); // 問題画面の上の表示
+   const mvName = D => D.mv || D.name; // 記録の引っこしでの呼び名（初級・中級・上級・名将）
+@@ -150,7 +152,7 @@
+       const id = t + n, me = s.me === id;
+       g += `<g class="pl t-${t}${n === 1 ? ' gk' : ''}${me ? ' me' : ''}" data-id="${id}" style="transform:translate(${x}px,${y}px)">` +
+         (me ? '<circle class="me-ring" r="3.2"/>' : '') +
+-        `<circle class="mag" r="2"/><text class="num" y=".74">${n}</text>` +
++        `<circle class="mag" r="2"/>${t === 'h' && n !== 1 && S.deck && S.deck.fav ? '<circle class="rin" r="1.48"/><circle class="rw" r="2"/><circle class="rr" r="2"/>' : ''}<text class="num" y=".74">${n}</text>` +
+         (me ? '<text class="me-lb" y="-3.9">あなた</text>' : '') + '</g>';
+     };
+     s.a.forEach(p => add('a', p));
+@@ -162,7 +164,7 @@
+ 
+   function pitchSVG(s) {
+     const v = s.view;
+-    const label = `${PH[s.ph]}の場面。青が味方、赤が相手。味方は上に向かって攻めている。`;
++    const label = `${PH[s.ph]}の場面。${S.deck && S.deck.fav ? 'クラブの色が味方、灰色が相手' : '青が味方、赤が相手'}。味方は上に向かって攻めている。`;
+     return `<svg id="pitch" viewBox="${v.join(' ')}" role="img" aria-label="${label}">
+       ${field()}${s.lanes ? lanes(v) : ''}${s.line ? offside(s.line) : ''}
+       <g class="opts-g">${s.opts.map(optG).join('')}</g>
+@@ -207,9 +209,10 @@
+   const NO_START = /^[をにがはのへてゃゅょぁぃぅぇぉっァィゥェォッャュョー、。・）」』，．：！？]/;
+   // 閉じ括弧の直後はブラウザが keep-all でも折るので、文節の中では WORD JOINER（U+2060）でつなぐ。
+   const phrases = text => window.BudouX.parse(text).reduce((a, p) => {
+-    if (a.length && NO_START.test(p)) a[a.length - 1] += p; else a.push(p);
++    // 「3-0」「4-4-2」は数字とハイフンの間で折らない（文節をつなぎ、ハイフンの後を WORD JOINER でつなぐ）
++    if (a.length && (NO_START.test(p) || (/\d-$/.test(a[a.length - 1]) && /^\d/.test(p)))) a[a.length - 1] += p; else a.push(p);
+     return a;
+-  }, []).map(p => p.replace(/([）」』)])(?=.)/g, '$1⁠'));
++  }, []).map(p => p.replace(/([）」』)])(?=.)/g, '$1⁠').replace(/(\d-)(?=\d)/g, '$1⁠'));
+   function phrase(root) {
+     if (!root || !window.BudouX) return;
+     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+@@ -270,6 +273,19 @@
+     return { id: 'live', live: true, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
+   }
+ 
++  // お気に入りクラブ（試作）: クラブごとのデッキ。自己ベストは残さない（試作のあいだ）
++  const favDeck = id => {
++    const c = FAV && FAV.clubs.find(x => 'fav-' + x.id === id); if (!c) return null;
++    return { id: 'fav-' + c.id, fav: true, club: c, short: c.name, name: FAV.name, title: c.name, q: c.q };
++  };
++  function favCards() {
++    if (!FAV) return '';
++    return FAV.clubs.map(c => `<button class="lv" data-start="fav-${esc(c.id)}" aria-label="${esc(FAV.name)} ${esc(c.name)}">
++      <span class="lv-head"><span class="ico" aria-hidden="true"><i class="club-dot" style="--c:${esc(c.color.home)};--r:${esc(c.color.rim)}"></i></span><span class="lv-name">${esc(FAV.name)}</span><span class="lv-title">${esc(c.name)}</span><span class="lv-best"><b>${c.q.length}</b>問</span></span>
++      <span class="lv-who"><span class="lv-w">名場面と戦い方、クラブ名は架空</span></span>
++    </button>`).join('');
++  }
++
+   function home() {
+     S.screen = 'home'; clearTimers();
+     const best = loadBest();
+@@ -295,7 +311,7 @@
+       </div>
+       <nav class="levels" aria-label="遊ぶものを選ぶ">
+         <div class="grp">${LV.map(L => card(L, `<span class="pips" aria-hidden="true">${pips(L.no)}</span>`, L.name, best)).join('')}</div>
+-        <div class="grp">${card(CLUB, CLUB_ICON, CLUB.name, best)}${liveCard()}</div>
++        <div class="grp">${card(CLUB, CLUB_ICON, CLUB.name, best)}${liveCard()}${favCards()}</div>
+       </nav>
+     </div>`;
+     phrase(app);
+@@ -314,7 +330,7 @@
+     const D = S.deck, s = cur(), v = s.view;
+     seen(D, s.id);
+     app.innerHTML = `
+-    <div class="screen play" data-qid="${esc(s.id)}">
++    <div class="screen play${D.fav ? ' club' : ''}" data-rim="${RIM}" data-qid="${esc(s.id)}"${D.fav ? ` style="--home:${esc(D.club.color.home)};--away:${esc(D.club.color.away)};--rim:${esc(D.club.color.rim)}"` : ''}>
+       <nav class="bar">
+         <button class="link back" id="back" aria-label="ホームへ戻る">${icon('back')}</button>
+         <span class="bar-lv">${esc(D.short)}</span>
+@@ -494,7 +510,7 @@
+     S.qs = TM.pick(D.q, TM.SESSION, REC.includes(D) ? loadHist()[D.id] : []).map(q => TM.prep(q));
+     question();
+   }
+-  const deckOf = id => (id === 'live' ? liveDeck() : REC.find(D => D.id === id));
++  const deckOf = id => (id === 'live' ? liveDeck() : id.startsWith('fav-') ? favDeck(id) : REC.find(D => D.id === id));
+ 
+   /* ---------- 記録の引っこし（自己ベストをファイルかコードで持ち出す・読み込む） ----------
+      自己ベストは localStorage なので、URL（オリジン）が変わる・ホーム画面のアプリと Safari・別の端末では引き継がれない。
+--- a/dev/src/page.html
++++ b/dev/src/page.html
+@@ -103,6 +103,17 @@
+ .lv:disabled:hover { background: none; }
+ /* 名将の戦術（作戦ボードの線アイコン）と前節の一戦（色の点）。レベルの「●●○」と同じ幅 */
+ .ico { flex: none; width: 24px; display: flex; align-items: center; color: var(--muted); }
++.ico .club-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 2px solid var(--r); }
++.club .t-h .mag { stroke: var(--rim); stroke-width: .55; }
++.club .t-h.gk .mag { stroke: var(--chalk); stroke-width: .45; }
++.rin, .rw, .rr { display: none; fill: none; }
++.club[data-rim="double"] .t-h:not(.gk) .mag { stroke: #FFFFFF; stroke-width: .34; }
++.club[data-rim="double"] .rr { display: inline; stroke: var(--rim); stroke-width: .42; r: 2.38px; }
++.club[data-rim="half"] .t-h:not(.gk) .mag, .club[data-rim="buoy"] .t-h:not(.gk) .mag { stroke: none; }
++.club[data-rim="half"] .rw, .club[data-rim="buoy"] .rw { display: inline; stroke: #FFFFFF; stroke-width: .6; }
++.club[data-rim="half"] .rr, .club[data-rim="buoy"] .rr { display: inline; stroke: var(--rim); stroke-width: .6; }
++.club[data-rim="half"] .rr { stroke-dasharray: 6.2832 6.2832; stroke-dashoffset: 6.2832; }
++.club[data-rim="buoy"] .rr { stroke-dasharray: 3.1416 3.1416; stroke-dashoffset: 1.5708; }
+ .ico.live i { width: 7px; height: 7px; margin-left: 1px; border-radius: 50%; background: var(--good); }
+ 
+ /* 記録の引っこし（ホームの上に重ねる。スクロールさせずに1画面に収める） */
+@@ -299,6 +310,7 @@
+ <script src="data2.js"></script>
+ <script src="data3.js"></script>
+ <script src="data4.js"></script>
++<script src="data5.js"></script>
+ <script src="live.js"></script>
+ <script src="logic.js"></script>
+ <script src="budoux.js"></script>
+--- a/dev/check.js
++++ b/dev/check.js
+@@ -6,8 +6,9 @@
+ 'use strict';
+ const path = require('path');
+ global.window = {};
+-for (const f of ['data1.js', 'data2.js', 'data3.js', 'data4.js', 'logic.js']) require(path.join(__dirname, 'src', f));
++for (const f of ['data1.js', 'data2.js', 'data3.js', 'data4.js', 'data5.js', 'logic.js']) require(path.join(__dirname, 'src', f));
+ const LIVE = require('./livedata').load();
++const FAV = window.FAV;
+ const L = window.LEVELS, CLUB = window.CLUB, TM = window.TM;
+ let errors = 0;
+ const err = (...a) => { errors++; console.log('ERROR', ...a); };
+@@ -165,6 +166,12 @@
+   });
+ });
+ 
++// お気に入りクラブ（試作）: クラブごとに id・名前・色、問題は lv と tag（年・節）が必要
++if (FAV) FAV.clubs.forEach(c => {
++  if (!/^[a-z0-9]+$/.test(c.id || '') || !str(c.name)) err('FAV', 'クラブの id・name', c.id);
++  if (!c.color || !['home', 'rim', 'away'].every(k => /^#[0-9A-Fa-f]{6}$/.test(c.color[k] || ''))) err('FAV', c.id, 'color は #RRGGBB');
++  (c.q || []).forEach((q, qi) => { checkQ(q, `FAV ${c.id} Q${qi + 1}(${q.id})`, { lv: true }); if (!str(q.tag)) err('FAV', q.id, 'tag（年・節）が必要'); });
++});
+ const liveQ = LIVE.reduce((n, lg) => n + lg.seasons.reduce((m, se) => m + Object.values(se.rounds).reduce((k, r) => k + r.q.length, 0), 0), 0);
+ console.log(`levels ${L.length} · questions ${L.map(l => l.q.length).join('/')} · club ${CLUB ? CLUB.q.length : 0} · live ${liveQ} · errors ${errors}`);
+ process.exit(errors ? 1 : 0);
+--- a/dev/build.js
++++ b/dev/build.js
+@@ -18,7 +18,7 @@
+ // JSON の中の "<" は \u003c にして、文の中身で </script> が閉じられないようにする。
+ const LIVE_JS = () => `window.LIVE = ${JSON.stringify(live.load()).replace(/</g, '\\u003c')};`;
+ const read = f => (f === 'live.js' ? LIVE_JS() : fs.readFileSync(path.join(SRC, f), 'utf8'));
+-const DATA_FILES = ['data1.js', 'data2.js', 'data3.js', 'data4.js'];
++const DATA_FILES = ['data1.js', 'data2.js', 'data3.js', 'data4.js', 'data5.js'];
+ 
+ // 0) フォントの文字: ソースに出てくる文字（budoux.js は辞書なので除く）と ASCII。
+ //    fonts/ のサブセットに足りない文字があれば止める（make_fonts.py で作り直す）。
