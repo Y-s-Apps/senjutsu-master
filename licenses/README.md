@@ -6,6 +6,7 @@
 | Dela Gothic One（The Dela Gothic Project Authors） | 見出しのフォント（`fonts/tm-display-*.woff2`） | SIL Open Font License 1.1 | [DelaGothicOne-OFL.txt](DelaGothicOne-OFL.txt) |
 | Zen Kaku Gothic New（The Zen Kaku Gothic Project Authors） | 本文のフォント（`fonts/tm-gothic-*.woff2`） | SIL Open Font License 1.1 | [ZenKakuGothicNew-OFL.txt](ZenKakuGothicNew-OFL.txt) |
 | IBM Plex Mono（IBM Corp.） | 数字・ラベルのフォント（`fonts/tm-mono-*.woff2`） | SIL Open Font License 1.1 | [IBMPlexMono-OFL.txt](IBMPlexMono-OFL.txt) |
+| Zen Old Mincho（The Zen Old Mincho Project Authors） | アプリアイコンの「戦」の字形（`dev/icons/make_icons.py`。フォントは配信していない） | SIL Open Font License 1.1 | [ZenOldMincho-OFL.txt](ZenOldMincho-OFL.txt) |
 
 フォントは、このアプリで使う文字だけを残したサブセットです（`dev/fonts/make_fonts.py`）。
 作り直したフォントであることを示すため、内部の名前は TM Display / TM Gothic / TM Mono に変えています

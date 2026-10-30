@@ -10,7 +10,7 @@
   const PH = { atk: '攻撃', def: '守備', tr: '切り替え', set: 'セットプレー', coach: '指導場面' };
   const LVN = ['', '初級', '中級', '上級'];
   const RES = ['要注意', '悪くない', 'ベスト'];
-  const VERDICT = ['ここは要注意', '悪くない選択', 'ベスト！'];
+  const VERDICT = ['要注意', '悪くない', 'ベスト'];
   const BO = [1.35, -1.15]; // ボールは選手の足元に少しずらして置く
   const KEY = 'tacdrill-best-v1';
   const HKEY = 'senjutsu-master-recent-v1'; // 直近に出した問題（同じ問題が続けて出ないように）
@@ -18,6 +18,17 @@
   // deck: いま遊んでいるもの（レベル・名将の戦術・前節の一戦）、qs: 今回出す問題（選択肢は並べ替え済み）
   const S = { deck: null, qs: [], qi: 0, ans: [], done: false, timers: [], screen: 'home' };
 
+  // 線のアイコン（16×16、線の幅はすべて CSS の .i で同じにする）
+  const IC = {
+    back: '<path d="M10 3.5 5.5 8l4.5 4.5"/>',
+    next: '<path d="M3 8h10M9 4l4 4-4 4"/>',
+    replay: '<path d="M13.2 8.6A5.25 5.25 0 1 1 11.6 4.2"/><path d="M12.2 1.9v2.8H9.4"/>',
+    hint: '<path d="M6.1 13.9h3.8"/><path d="M8 2a4 4 0 0 0-2.3 7.3c.5.4.8.9.8 1.5v.6h3v-.6c0-.6.3-1.1.8-1.5A4 4 0 0 0 8 2Z"/>',
+    move: '<path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/>',
+    board: '<rect x="1.75" y="3" width="12.5" height="10" rx="1.5"/><path d="M8 3v10"/><circle cx="8" cy="8" r="2"/>',
+    close: '<path d="M4 4l8 8M12 4l-8 8"/>'
+  };
+  const icon = n => `<svg class="i" viewBox="0 0 16 16" aria-hidden="true">${IC[n]}</svg>`;
   const f = n => Math.round(n * 100) / 100;
   const maxOf = D => Math.min(D.q.length, TM.SESSION) * 2;
   const cur = () => S.qs[S.qi];
@@ -65,7 +76,6 @@
   /* ---------- ピッチ描画 ---------- */
   function field() {
     let g = '<rect class="grass" x="-8" y="-8" width="84" height="121"/>';
-    for (let i = 0; i < 14; i++) if (i % 2) g += `<rect class="mow" x="-8" y="${i * 7.5}" width="84" height="7.5"/>`;
     g += `<g class="goal"><rect x="30.34" y="-2.2" width="7.32" height="2.2"/><rect x="30.34" y="105" width="7.32" height="2.2"/></g>
     <g class="chalk">
       <rect x="0" y="0" width="68" height="105"/>
@@ -140,7 +150,7 @@
       const id = t + n, me = s.me === id;
       g += `<g class="pl t-${t}${n === 1 ? ' gk' : ''}${me ? ' me' : ''}" data-id="${id}" style="transform:translate(${x}px,${y}px)">` +
         (me ? '<circle class="me-ring" r="3.2"/>' : '') +
-        `<circle class="mag" r="2"/><circle class="shine" cx="-.55" cy="-.7" r=".75"/><text class="num" y=".74">${n}</text>` +
+        `<circle class="mag" r="2"/><text class="num" y=".74">${n}</text>` +
         (me ? '<text class="me-lb" y="-3.9">あなた</text>' : '') + '</g>';
     };
     s.a.forEach(p => add('a', p));
@@ -224,14 +234,14 @@
   /* ---------- 画面: ホーム ---------- */
   const TWO_COL = '(min-width: 720px) and (min-aspect-ratio: 5/4)';
   function pips(n) { return [0, 1, 2].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join(''); }
-  const CLUB_ICON = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 16 12"><rect x=".7" y=".7" width="14.6" height="10.6" rx="1.4"/><path d="M8 .7V11.3"/><circle cx="8" cy="6" r="2"/></svg></span>';
+  const CLUB_ICON = `<span class="ico">${icon('board')}</span>`;
 
   // レベルと「名将の戦術」のカード: 名前・題・自己ベスト、2行目に対象・特徴・問題数
   function card(D, mark, label, best) {
     const b = best[D.id];
     return `<button class="lv" data-start="${esc(D.id)}" aria-label="${esc(label)} ${esc(D.title)}">
-      <span class="lv-head">${mark}<span class="lv-name">${esc(label)}</span><span class="lv-title">${esc(D.title)}</span><span class="lv-best">最高<b>${b == null ? '—' : esc(b)}</b>/${maxOf(D)}</span></span>
-      <span class="lv-who"><span>${esc(D.who)}${LV.includes(D) ? '向け' : ''}</span>${D.feat ? `<span class="lv-tag">${esc(D.feat)}</span>` : ''}<span class="lv-n">全${D.q.length}問</span></span>
+      <span class="lv-head">${mark}<span class="lv-name">${esc(label)}</span><span class="lv-title">${esc(D.title)}</span><span class="lv-best"><small>最高</small><b>${b == null ? '—' : esc(b)}</b>/${maxOf(D)}</span></span>
+      <span class="lv-who"><span class="lv-w">${esc(D.who)}${LV.includes(D) ? '向け' : ''}${D.feat ? `、${esc(D.feat)}` : ''}</span><span class="lv-n">${D.q.length}問</span></span>
     </button>`;
   }
 
@@ -250,7 +260,7 @@
         : next ? `第${next.md.no}節（${TM.dateLabel(next.md.dates)}）が終わると始まります` : '分析を準備中です';
     return `<button class="lv lv-live" data-start="live"${ready ? '' : ' disabled'} aria-label="前節の一戦 ${esc(head)}">
       <span class="lv-head"><span class="ico live" aria-hidden="true"><i></i></span><span class="lv-name">前節の一戦</span><span class="lv-title">${esc(head)}</span>${ready ? `<span class="lv-best"><b>${Math.min(ready.round.q.length, TM.SESSION)}</b>問</span>` : ''}</span>
-      <span class="lv-who"><span>${esc(sub)}</span><span class="lv-tag">非公式の分析</span></span>
+      <span class="lv-who"><span class="lv-w">${esc(sub)}、非公式の分析</span></span>
     </button>`;
   }
   // 前節の一戦を遊ぶときのデッキ（自己ベストは残さない）
@@ -279,14 +289,13 @@
           <li><svg class="wide" viewBox="0 -2 16 4" aria-hidden="true"><path class="k-ln" d="M1 0Q2 -1.2 3 0T5 0T7 0T9 0T11 0T13 0"/><path class="k-hd" d="M15 0L12.6-1.3V1.3Z"/></svg>ドリブル</li>
         </ul>
         <div class="foot-row">
-          <p class="foot"><span>味方はいつも上（↑）へ攻めます。</span><span>採点：ベスト2点・悪くない1点・要注意0点</span></p>
-          <button class="link move-link" id="moveOpen" aria-haspopup="dialog" aria-label="記録の引っこし・バックアップ">記録の引っこし</button>
+          <p class="foot"><span>味方はいつも上（↑）へ攻めます。</span><span>採点：<span class="nw">ベスト2点</span>・<span class="nw">悪くない1点</span>・<span class="nw">要注意0点</span></span></p>
+          <button class="link move-link" id="moveOpen" aria-haspopup="dialog" aria-label="記録の引っこし・バックアップ">${icon('move')}記録の引っこし</button>
         </div>
       </div>
       <nav class="levels" aria-label="遊ぶものを選ぶ">
-        ${LV.map(L => card(L, `<span class="pips" aria-hidden="true">${pips(L.no)}</span>`, L.name, best)).join('')}
-        ${card(CLUB, CLUB_ICON, CLUB.name, best)}
-        ${liveCard()}
+        <div class="grp">${LV.map(L => card(L, `<span class="pips" aria-hidden="true">${pips(L.no)}</span>`, L.name, best)).join('')}</div>
+        <div class="grp">${card(CLUB, CLUB_ICON, CLUB.name, best)}${liveCard()}</div>
       </nav>
     </div>`;
     phrase(app);
@@ -307,7 +316,7 @@
     app.innerHTML = `
     <div class="screen play" data-qid="${esc(s.id)}">
       <nav class="bar">
-        <button class="link back" id="back" aria-label="ホームへ戻る">←</button>
+        <button class="link back" id="back" aria-label="ホームへ戻る">${icon('back')}</button>
         <span class="bar-lv">${esc(D.short)}</span>
         <ol class="dots" aria-hidden="true">${dots()}</ol>
         <span class="bar-q">${S.qi + 1}<small>/${S.qs.length}</small></span>
@@ -323,10 +332,10 @@
         </div>
         <section class="panel" id="panel">
           <div class="qhead">
-            <span class="phase ph-${s.ph}">${PH[s.ph]}</span>
+            <span class="phase ph-${s.ph}"><i></i>${PH[s.ph]}</span>
             ${s.lv ? `<span class="diff" role="img" aria-label="難しさ ${LVN[s.lv]}"><span class="pips" aria-hidden="true">${pips(s.lv)}</span></span>` : ''}
             <h2 class="qt">${esc(s.t)}</h2>
-            ${s.hint ? '<button class="hint-btn" id="hintBtn" aria-pressed="false">ヒント</button>' : ''}
+            ${s.hint ? `<button class="hint-btn" id="hintBtn" aria-pressed="false">${icon('hint')}ヒント</button>` : ''}
           </div>
           ${s.ctx || s.tag ? `<p class="ctx">${s.tag ? `<span class="ctx-tag">${esc(s.tag)}</span>` : ''}${s.ctx ? `<span>${esc(s.ctx)}</span>` : ''}</p>` : ''}
           <p class="sit">${esc(s.s)}</p>
@@ -371,8 +380,8 @@
       <div class="tabs" role="tablist">${tabList(s, o, bestOf(s)).map(([id, n]) => `<button class="tab" role="tab" data-tab="${id}" aria-selected="${id === tab}">${n}</button>`).join('')}</div>
       <div class="tabbody" id="tabbody" role="tabpanel">${tabBody(tab, o.k)}</div>
       <div class="acts">
-        <button class="btn ghost" id="replay" aria-label="動きをもう一度再生">↻ 動き</button>
-        <button class="btn" id="next">${last ? '結果を見る' : '次の問題へ'} →</button>
+        <button class="btn ghost" id="replay" aria-label="動きをもう一度再生">${icon('replay')}動き</button>
+        <button class="btn" id="next">${last ? '結果を見る' : '次の問題へ'}${icon('next')}</button>
       </div>`;
   }
 
@@ -387,7 +396,7 @@
     const s = cur();
     const o = s.opts.find(x => x.k === k);
     const best = bestOf(s);
-    const line = (x, tag) => `<p class="oline c${x.sc}"><span class="k k${x.sc}">${esc(x.k)}</span><span>${tag}${esc(x.l)}</span></p><p>${esc(x.why)}</p>`;
+    const line = (x, tag) => `<p class="oline c${x.sc}"><span class="kc">${esc(x.k)}</span><span>${tag}${esc(x.l)}</span></p><p>${esc(x.why)}</p>`;
     switch (id) {
       case 'why':
         return line(o, 'あなたの選択：') + (o.k !== best.k ? line(best, 'ベスト：') : '');
@@ -422,7 +431,7 @@
     });
     document.getElementById('pitch').classList.add('answered');
     const stamp = document.getElementById('stamp');
-    stamp.className = 'stamp v' + o.sc; stamp.textContent = `${k} · ${VERDICT[o.sc]} +${o.sc}点`; stamp.hidden = false;
+    stamp.className = 'stamp v' + o.sc; stamp.innerHTML = `<i></i>${esc(k)} · ${VERDICT[o.sc]}<b>+${o.sc}点</b>`; stamp.hidden = false;
     const hint = document.getElementById('hint'); if (hint) hint.hidden = true;
     document.getElementById('pt').textContent = total();
     document.querySelector('.dots').innerHTML = dots();
@@ -460,18 +469,18 @@
     <div class="screen result">
       <div class="r-head">
         <p class="eyebrow">${esc(D.short)} · ${esc(D.live ? D.name : D.title)}</p>
-        <div class="score"><b>${sc}</b><span>/ ${mx}</span>${isNew ? '<em>自己ベスト</em>' : ''}</div>
+        <div class="score"><b>${sc}</b><span>/${mx}</span>${isNew ? '<em><i></i>自己ベスト</em>' : ''}</div>
         <p class="msg${D.live ? ' msg-live' : ''}">${esc(msg)}</p>
       </div>
       <ol class="rlist">
         ${S.qs.map((q, i) => {
           const a = S.ans[i] || { sc: 0 };
-          return `<li><span class="chip c${a.sc}">${RES[a.sc]}</span><span class="rt"><b>${esc(q.t)}</b><small>${esc(q.key[0])}</small></span></li>`;
+          return `<li><span class="rt"><b>${esc(q.t)}</b><small>${esc(q.key[0])}</small></span><span class="rv c${a.sc}"><i></i>${RES[a.sc]}</span></li>`;
         }).join('')}
       </ol>
       <div class="acts">
         <button class="btn ghost" id="retry">${D.live ? 'もう一度' : '別の問題で'}</button>
-        ${nx ? `<button class="btn" id="nextLv">${esc(nx === CLUB ? nx.title : nx.short)}へ →</button>` : ''}
+        ${nx ? `<button class="btn" id="nextLv">${esc(nx === CLUB ? nx.title : nx.short)}へ${icon('next')}</button>` : ''}
         <button class="btn ghost" id="toHome">ホームへ</button>
       </div>
     </div>`;
@@ -565,7 +574,7 @@
     app.insertAdjacentHTML('beforeend', `
     <div class="sheet-bg" id="mv">
       <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="mvT">
-        <div class="sheet-head"><h2 id="mvT">記録の引っこし</h2><button class="link sheet-x" id="mvClose" aria-label="閉じる">×</button></div>
+        <div class="sheet-head"><h2 id="mvT">記録の引っこし</h2><button class="link sheet-x" id="mvClose" aria-label="閉じる">${icon('close')}</button></div>
         <p class="sheet-sub">自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。</p>
         <p class="mv-now" id="mvNow">いまの記録　${esc(bestLine(best))}</p>
         <h3 class="sheet-h">持っていく</h3>

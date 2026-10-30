@@ -1,87 +1,86 @@
 """アプリアイコンを描く:  python3 dev/icons/make_icons.py
-戦術ボードの一部（芝・白線）に、味方（青）と相手（赤）のマグネット、黄色のペンの矢印。
-リポジトリ直下に icon-192/512、icon-maskable-512、apple-touch-icon（180）、favicon-32 を書き出す。
-必要なもの: pip install pillow
+黒地に明朝の「戦」の一字、下にピッチのライン（緑）とボール（ペンの色）。2026-10-30 の候補 C。
+SVG を Chromium（Playwright）で 1024px に描き、縮小して書き出す:
+リポジトリ直下に icon-192/512、icon-maskable-512、apple-touch-icon（180）、favicon-32。
+
+「戦」の形は Zen Old Mincho Bold（The Zen Old Mincho Project Authors、SIL OFL 1.1。licenses/ZenOldMincho-OFL.txt）の字形。
+フォントを読み込まずに描けるよう、google/fonts のコミット 9862abc066c9b83bf84c3e8ed1fc2d8d48f9bbf0 の
+ofl/zenoldmincho/ZenOldMincho-Bold.ttf（SHA-256 d6b95c1ff45c8dac153d28961e4c37d7d03b648330c71f884d124dc652a13c0d）から
+字形をパスにして GLYPH に入れてある（1000 単位、y は上向き、送り幅 1000）。
+必要なもの: pip install playwright pillow && playwright install chromium
 """
-import math
+import io
 import pathlib
-from PIL import Image, ImageDraw
+from PIL import Image
+from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-S = 2048  # 下書きの大きさ（縮小してなめらかにする）
-GRASS, MOW = (47, 117, 73), (42, 107, 66)
-CHALK = (244, 249, 242, 215)
-HOME, AWAY, PEN = (29, 78, 208), (209, 57, 43), (255, 212, 59)
+BG, INK, LINE, BALL = '#12110F', '#EEE8DC', '#2B6B43', '#F2C24E'
+GLYPH = (
+    'M271 -74Q248 -74 248 -53Q248 -48 249 -24Q250 0 251.5 36Q253 72 254 111H142Q142 111 112 110.5'
+    'Q82 110 47 106L36 149Q80 143 111 142Q142 141 142 141H255V259H180V233Q180 220 154.5 211'
+    'Q129 202 101 202Q78 202 78 223Q78 227 79 252Q80 277 81.5 314Q83 351 84 392Q85 433 85 468'
+    'Q85 529 83 555.5Q81 582 76 597Q72 602 78 606Q82 610 89 608Q99 605 117.5 598Q136 591 156 583'
+    'Q176 575 190 568H408Q416 568 422 574Q427 580 432 587Q437 594 442 601Q448 611 461 605'
+    'Q476 598 502.5 584Q529 570 543 559Q551 554 550.5 544.5Q550 535 540 530Q536 528 533 526.5'
+    'Q530 525 527 523Q518 517 518 497V496Q525 496 531.5 496.5Q538 497 545 498L606 505Q603 554 601 608.5'
+    'Q599 663 598 724Q598 773 595 793Q592 813 590 819Q588 824 590 829Q594 833 600 832Q615 832 639.5 828'
+    'Q664 824 687.5 820Q711 816 723 812Q735 809 733 797Q732 785 719 783Q710 782 704 779.5Q698 777 698 766'
+    'Q691 620 695 514L787 524Q800 525 806 534Q811 543 822 562Q833 581 838 590Q846 603 860 595'
+    'Q872 590 889 579Q906 568 922 556Q938 544 946 536Q954 529 952 520Q950 511 942 510L697 484'
+    'Q702 418 710.5 366Q719 314 732 273Q755 325 767.5 372Q780 419 780 441Q780 448 783 451Q786 455 793 453'
+    'Q806 449 826.5 441.5Q847 434 868 426Q889 418 902 412Q911 408 909 397Q906 386 894 387'
+    'Q884 388 878 383.5Q872 379 867 365Q826 253 772 180Q787 156 803.5 137Q820 118 838 102Q853 89 863 88.5'
+    'Q873 88 881 104Q888 118 899 144Q910 170 920.5 195.5Q931 221 936 233Q950 240 956 227'
+    'Q954 218 950.5 197Q947 176 942.5 151Q938 126 934.5 105Q931 84 930 75Q927 56 929 44.5Q931 33 943 18'
+    'Q957 2 957.5 -17Q958 -36 944 -51Q927 -70 887.5 -60Q848 -50 807 -18Q776 7 750.5 35.5Q725 64 704 101'
+    'Q640 39 561.5 2.5Q483 -34 392 -55Q380 -47 387 -35Q469 -6 542.5 43.5Q616 93 671 169Q649 226 633 301'
+    'Q617 376 609 474L549 468Q541 467 533.5 466.5Q526 466 518 464Q519 417 520.5 370Q522 323 523.5 290.5'
+    'Q525 258 525 251Q525 238 499.5 229Q474 220 447 220Q424 220 424 241V259H348V141H430Q444 141 451 149'
+    'Q457 158 470.5 175Q484 192 489 198Q497 209 511 200Q528 190 551.5 170Q575 150 586 136'
+    'Q593 127 590.5 119Q588 111 579 111H348Q349 56 350.5 11Q352 -34 352 -44Q352 -53 339.5 -59.5'
+    'Q327 -66 308 -70Q289 -74 271 -74ZM376 596Q370 595 365 598.5Q360 602 360 608Q372 627 384 657'
+    'Q396 687 407 722.5Q418 758 425 791Q427 802 428 810Q429 818 429 823Q430 827 430 829.5Q430 832 431 833'
+    'Q436 836 442 834Q455 829 477 820Q499 811 521.5 801Q544 791 558 783Q566 777 563 767Q559 757 548 759'
+    'Q531 761 520 747Q500 721 474 692.5Q448 664 422.5 639Q397 614 376 596ZM291 625Q272 623 259 632.5'
+    'Q246 642 246 661Q245 705 235.5 746Q226 787 208 819Q209 826 214 830Q219 834 225 833Q275 808 307.5 773'
+    'Q340 738 342 691Q343 660 328.5 644Q314 628 291 625ZM150 617Q131 613 118 621Q105 629 103 648'
+    'Q99 691 84 731Q69 771 47 799Q47 816 62 816Q115 797 152.5 764.5Q190 732 195 688Q199 657 185.5 639.5'
+    'Q172 622 150 617ZM868 624Q853 620 839 625.5Q825 631 820 650Q811 681 792.5 715Q774 749 745 768'
+    'Q740 783 754 788Q786 784 818 773.5Q850 763 874 745Q898 727 905 699Q913 670 900.5 650Q888 630 868 624'
+    'ZM348 289H424V399H348ZM348 429H424V538H348ZM180 289H255V399H180ZM180 429H255V538H180Z'
+)
 
 
-def draw_icon(scale):
-    """scale=1 で全面、maskable は中心へ縮めて安全圏に収める。"""
-    im = Image.new('RGB', (S, S), GRASS)  # RGB の上に RGBA で描くと半透明が重なる
-    d = ImageDraw.Draw(im, 'RGBA')
-    band = S / 8
-    for i in range(8):
-        if i % 2:
-            d.rectangle([0, i * band, S, (i + 1) * band], fill=MOW)
+def svg(scale):
+    """scale=1 で全面、maskable は中心へ縮めて安全圏（中心から半径 40%）に収める。"""
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" fill="{BG}"/>
+  <g transform="translate(512 512) scale({scale}) translate(-512 -512)">
+    <path transform="translate(222 700) scale(.58 -.58)" fill="{INK}" d="{GLYPH}"/>
+    <line x1="196" y1="820" x2="760" y2="820" stroke="{LINE}" stroke-width="26" stroke-linecap="round"/>
+    <circle cx="826" cy="820" r="40" fill="{BALL}"/>
+  </g>
+</svg>"""
 
-    c = S / 2
-    T = lambda x, y: (c + (x - c) * scale, c + (y - c) * scale)  # noqa: E731
-    w = lambda v: v * scale  # noqa: E731
 
-    lw = int(w(22))
-    # 白線: ペナルティエリア・ゴールエリア・ハーフウェーライン・センターサークル
-    d.rectangle([*T(524, -1200), *T(1524, 460)], outline=CHALK, width=lw)
-    d.rectangle([*T(774, -1200), *T(1274, 180)], outline=CHALK, width=lw)
-    d.line([T(-2000, 1400), T(S + 2000, 1400)], fill=CHALK, width=lw)
-    x0, y0 = T(1024 - 300, 1400 - 300)
-    x1, y1 = T(1024 + 300, 1400 + 300)
-    d.ellipse([x0, y0, x1, y1], outline=CHALK, width=lw)
-
-    # 黄色の矢印（味方が相手の脇を回り込んで前へ）
-    p0, cp, p1 = (640, 1300), (520, 620), (1060, 520)
-    pts = []
-    for i in range(61):
-        t = i / 60
-        x = (1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * cp[0] + t * t * p1[0]
-        y = (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * cp[1] + t * t * p1[1]
-        pts.append((x, y))
-    tx, ty = p1[0] - cp[0], p1[1] - cp[1]
-    L = math.hypot(tx, ty)
-    ux, uy = tx / L, ty / L
-    end = (p1[0] - ux * 60, p1[1] - uy * 60)
-    pts = [p for p in pts if (p[0] - p1[0]) * ux + (p[1] - p1[1]) * uy < -60] + [end]
-    d.line([T(*p) for p in pts], fill=PEN, width=int(w(70)), joint='curve')
-    r0 = int(w(35))
-    for p in (pts[0],):
-        x, y = T(*p)
-        d.ellipse([x - r0, y - r0, x + r0, y + r0], fill=PEN)
-    tip = (p1[0] + ux * 90, p1[1] + uy * 90)
-    bx, by = p1[0] - ux * 110, p1[1] - uy * 110
-    nx, ny = -uy * 130, ux * 130
-    d.polygon([T(*tip), T(bx + nx, by + ny), T(bx - nx, by - ny)], fill=PEN)
-
-    # マグネット
-    def magnet(x, y, r, col):
-        cx, cy = T(x, y)
-        rr = w(r)
-        d.ellipse([cx - rr, cy - rr + w(14), cx + rr, cy + rr + w(14)], fill=(0, 0, 0, 70))
-        d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=col, outline=(0, 0, 0, 90), width=int(w(10)))
-        sr = rr * 0.38
-        sx, sy = cx - rr * 0.32, cy - rr * 0.36
-        d.ellipse([sx - sr, sy - sr, sx + sr, sy + sr], fill=(255, 255, 255, 70))
-
-    magnet(1370, 860, 210, AWAY)
-    magnet(640, 1440, 250, HOME)
-    return im
+def render(page, scale):
+    page.set_content(f'<body style="margin:0">{svg(scale)}</body>')
+    return Image.open(io.BytesIO(page.locator('svg').screenshot())).convert('RGB')
 
 
 def save(im, size, name):
-    im.resize((size, size), Image.LANCZOS).convert('RGB').save(ROOT / name, optimize=True)
+    im.resize((size, size), Image.LANCZOS).save(ROOT / name, optimize=True)
 
 
-full = draw_icon(1.0)
-save(full, 512, 'icon-512.png')
-save(full, 192, 'icon-192.png')
-save(full, 180, 'apple-touch-icon.png')
-save(full, 32, 'favicon-32.png')
-save(draw_icon(0.78), 512, 'icon-maskable-512.png')
+with sync_playwright() as p:
+    browser = p.chromium.launch()
+    page = browser.new_page(viewport={'width': 1024, 'height': 1024})
+    full = render(page, 1.0)
+    save(full, 512, 'icon-512.png')
+    save(full, 192, 'icon-192.png')
+    save(full, 180, 'apple-touch-icon.png')
+    save(full, 32, 'favicon-32.png')
+    save(render(page, 0.8), 512, 'icon-maskable-512.png')
+    browser.close()
 print('icons written to', ROOT)
