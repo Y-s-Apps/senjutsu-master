@@ -250,7 +250,7 @@
         : next ? `第${next.md.no}節（${TM.dateLabel(next.md.dates)}）が終わると始まります` : '分析を準備中です';
     return `<button class="lv lv-live" data-start="live"${ready ? '' : ' disabled'} aria-label="前節の一戦 ${esc(head)}">
       <span class="lv-head"><span class="ico live" aria-hidden="true"><i></i></span><span class="lv-name">前節の一戦</span><span class="lv-title">${esc(head)}</span>${ready ? `<span class="lv-best"><b>${Math.min(ready.round.q.length, TM.SESSION)}</b>問</span>` : ''}</span>
-      <span class="lv-who"><span>${esc(sub)}</span><span class="lv-tag">名前は架空</span></span>
+      <span class="lv-who"><span>${esc(sub)}</span><span class="lv-tag">非公式の分析</span></span>
     </button>`;
   }
   // 前節の一戦を遊ぶときのデッキ（自己ベストは残さない）
@@ -328,7 +328,7 @@
             <h2 class="qt">${esc(s.t)}</h2>
             ${s.hint ? '<button class="hint-btn" id="hintBtn" aria-pressed="false">ヒント</button>' : ''}
           </div>
-          ${s.ctx ? `<p class="ctx">${esc(s.ctx)}</p>` : ''}
+          ${s.ctx || s.tag ? `<p class="ctx">${s.tag ? `<span class="ctx-tag">${esc(s.tag)}</span>` : ''}${s.ctx ? `<span>${esc(s.ctx)}</span>` : ''}</p>` : ''}
           <p class="sit">${esc(s.s)}</p>
           <p class="qq">${esc(s.q)}</p>
           <div class="opts" role="group" aria-label="選択肢">

@@ -12,6 +12,8 @@
 
 外部のサービスへは通信しません（フォントも同じサイトから配信しています）。
 
+国名・代表チーム名・大会名・リーグ名は、実際の出来事を説明するためにだけ使っています。クラブ名・監督名・選手名は架空です。各団体・クラブとは関係のない、非公式の学習用アプリです。
+
 同梱しているもの: BudouX 0.6.4（Apache License 2.0, Google LLC）— 日本語の改行位置の調整に使用。フォントは Dela Gothic One・Zen Kaku Gothic New・IBM Plex Mono（SIL Open Font License 1.1）のサブセット。ライセンス本文は `licenses/` にあります。
 
 ## 中身

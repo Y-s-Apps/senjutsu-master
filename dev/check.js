@@ -21,7 +21,7 @@ const pt = v => Array.isArray(v) && v.length === 2 && v.every(num);
 const str = v => typeof v === 'string' && v.length > 0;
 // 選択肢は毎回並べ替えて記号を振り直すので、文の中に記号（A・B・C の1文字）を書かない（CB・CK などの略語はよい）
 const LETTER = /(^|[^A-Za-z])[ABC](?=[^A-Za-z]|$)/;
-const TEXTS = ['t', 's', 'q', 'hint', 'ex', 'coach', 'drill', 'ctx'];
+const TEXTS = ['t', 's', 'q', 'hint', 'ex', 'coach', 'drill', 'ctx', 'tag'];
 const qids = new Set();
 
 // 1問の確認。opt: { hint, coach, lv, ctx } が true ならその項目が必要
@@ -35,7 +35,9 @@ function checkQ(q, tag, opt = {}) {
   if (opt.hint && !q.hint) err(tag, 'hint が必要');
   if (opt.coach && (!q.coach || !q.drill)) err(tag, 'coach と drill が必要');
   if (opt.lv ? ![1, 2, 3].includes(q.lv) : q.lv != null) err(tag, opt.lv ? 'lv（難しさ 1〜3）が必要' : 'lv はレベルの問題には書かない');
-  if (opt.ctx && !str(q.ctx)) err(tag, 'ctx（架空のクラブ名など）が必要');
+  if (opt.ctx && (!str(q.ctx) || !str(q.tag))) err(tag, 'ctx（架空のクラブ名（〇〇監督））と tag（国・年代・大会）が必要');
+  // 区切りに「·」を使わない（クラブ名の「・」とまぎれる）。クラブ名と監督名は「クラブ名（〇〇監督）」の形
+  for (const k of ['ctx', 'tag']) if (str(q[k]) && /[·•|｜]/.test(q[k])) err(tag, k, 'に区切りの記号（· など）を使わない', q[k]);
   if (!Array.isArray(q.key) || q.key.length !== 2 || !q.key.every(str)) err(tag, 'key は [用語, 説明]');
   if (!Array.isArray(q.view) || q.view.length !== 4 || !q.view.every(num)) return err(tag, 'view は数値4つ');
   if (!pt(q.ball)) err(tag, 'ball は [x, y]');
