@@ -24,7 +24,7 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - `dev/test/offline.py` — サイトのコピーを `/senjutsu-master/` の位置で配信し、service worker を登録して、オフライン・別ページや 404 を開いたあと・サーバーの 500・新しい版への切り替えでも正しく動くかを確認。引数にフォルダを渡すと、そのビルドを試せる。
 - `fonts/` — アプリで使う文字だけを収めたフォント（woff2）。`dev/fonts/make_fonts.py` が google/fonts の決まったコミットから元のフォントを取り（SHA-256 を確認、`dev/fonts/.cache/` は git に入れない）、サブセットを作る。作った文字の一覧は `dev/fonts/chars.txt`。内部名は TM Display / TM Gothic / TM Mono（IBM Plex の予約フォント名「Plex」を使わないため）。手で編集しない。
 - `licenses/` — 同梱している BudouX（Apache-2.0）とフォント（OFL 1.1）のライセンス本文。アイコンの字形に使った Zen Old Mincho（OFL 1.1）も。
-- `dev/draft/` — 相談中の機能の下書き（ビルドにも check.js にも入れない）。いまは「お気に入りクラブ」の問題データ `fav-yokohama.js` と、試作の差分 `fav-prototype.diff`（経緯は HANDOFF.md）。
+- `dev/draft/` — 相談中の機能の下書き（ビルドにも check.js にも入れない）。いまは「お気に入りクラブ」の問題データ `fav-clubs.js`（クラブごと、北から順）と、試作の差分 `fav-prototype.diff`（経緯は HANDOFF.md）。
 
 ## 変更の流れ
 1. `dev/src/` を編集
