@@ -9,16 +9,21 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const live = require('./livedata');
 
 const APP_ID = 'senjutsu-master'; // キャッシュ名の接頭辞
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(__dirname, 'src');
-const read = f => fs.readFileSync(path.join(SRC, f), 'utf8');
+// live.js はファイルではなく、dev/src/live/ の JSON（日程と節ごとの問題）から作る。
+// JSON の中の "<" は \u003c にして、文の中身で </script> が閉じられないようにする。
+const LIVE_JS = () => `window.LIVE = ${JSON.stringify(live.load()).replace(/</g, '\\u003c')};`;
+const read = f => (f === 'live.js' ? LIVE_JS() : fs.readFileSync(path.join(SRC, f), 'utf8'));
+const DATA_FILES = ['data1.js', 'data2.js', 'data3.js', 'data4.js'];
 
 // 0) フォントの文字: ソースに出てくる文字（budoux.js は辞書なので除く）と ASCII。
 //    fonts/ のサブセットに足りない文字があれば止める（make_fonts.py で作り直す）。
 function usedChars() {
-  const text = ['page.html', 'app.js', 'data1.js', 'data2.js', 'data3.js'].map(read).join('');
+  const text = ['page.html', 'app.js', 'logic.js', ...DATA_FILES].map(read).join('') + live.texts();
   const set = new Set([...text].filter(c => c >= ' '));
   for (let i = 0x20; i < 0x7f; i++) set.add(String.fromCharCode(i));
   return [...set].sort().join('');
@@ -38,7 +43,7 @@ const FONTS = fs.readdirSync(path.join(ROOT, 'fonts')).filter(f => f.endsWith('.
 // 1) 外部 script をインライン化（1ファイルにすると、更新がすぐ届く）
 //    HTML は正規表現で読まない。page.html に書いた <script src="…"></script> を決まった文字列として置き換え、
 //    埋め込んだ中身（SCRIPTS）をそのまま CSP のハッシュに使う。script を足したら SCRIPT_FILES にも足す。
-const SCRIPT_FILES = ['data1.js', 'data2.js', 'data3.js', 'budoux.js', 'app.js'];
+const SCRIPT_FILES = [...DATA_FILES, 'live.js', 'logic.js', 'budoux.js', 'app.js'];
 const SW_REG = "if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));";
 const SCRIPTS = [];
 const src = read('page.html');

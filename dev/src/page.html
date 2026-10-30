@@ -16,7 +16,7 @@
   --bg: #0E1310; --surface: #161D18; --ink: #E6ECE4; --muted: #96A399; --line: #2A352D;
   --frame: #212A23; --frame-hi: #2C362E;
   --accent: #7D9CFF; --accent-ink: #0E1310;
-  --good: #43C881; --ok: #E5B23A; --bad: #FF6D5E; --on-sem: #0E1310;
+  --good: #43C881; --ok: #E5B23A; --bad: #FF6D5E; --on-sem: #0E1310; --set: #B99BFF;
   --grass: #1E5634; --grass-2: #1A4D2E; --chalk: rgba(228, 239, 230, .78);
   --home: #3F6DF5; --away: #EE4A3B; --pen: #FFD43B; --pen-ink: #1B1A10;
   --p-good: #8DF7B8; --p-bad: #FF8B7B; --pen-mark: #FFD43B; --hl: rgba(255, 212, 59, .3);
@@ -108,9 +108,14 @@ button { font: inherit; color: inherit; }
 .lv-best b { font: 600 16px var(--f-mono); color: var(--ink); margin-left: 4px; }
 .lv .lv-who { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 12.5px; color: var(--muted); }
 .lv-tag { white-space: nowrap; font-size: 11px; font-weight: 700; color: var(--ink); border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; line-height: 1.6; }
-.lv-topics { font-size: 12px; color: var(--ink); opacity: .8; text-wrap: balance; }
-.lv-topics span { white-space: nowrap; margin-right: 6px; }
-.lv-topics span::before { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); margin-right: 5px; vertical-align: 3px; }
+.lv-n { white-space: nowrap; font: 600 11px/1.6 var(--f-mono); color: var(--muted); }
+.lv:disabled { cursor: default; opacity: .62; }
+.lv:disabled:hover { border-color: var(--line); }
+/* 名将の戦術（作戦ボードの印）と前節の一戦（試合の印）。レベルの「●●○」と同じ幅 */
+.ico { flex: none; width: 30px; display: flex; align-items: center; }
+.ico svg { width: 18px; height: 14px; fill: none; stroke: var(--pen); stroke-width: 1.3; }
+.ico.live i { width: 9px; height: 9px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(67, 200, 129, .25); }
+.lv-club, .lv-live { border-style: dashed; }
 
 /* 問題画面 */
 .play { gap: 8px; }
@@ -139,7 +144,10 @@ button { font: inherit; color: inherit; }
 .qhead { display: flex; align-items: center; gap: 8px; }
 .phase { flex: none; font-size: 11.5px; font-weight: 700; padding: 1px 9px; border-radius: 99px; color: var(--on-sem); line-height: 1.6; }
 .ph-atk { background: var(--home); color: #FFFFFF; } .ph-def { background: var(--away); color: #FFFFFF; }
-.ph-tr { background: var(--ok); } .ph-coach { background: var(--ink); color: var(--bg); }
+.ph-tr { background: var(--ok); } .ph-coach { background: var(--ink); color: var(--bg); } .ph-set { background: var(--set); }
+.diff { flex: none; display: flex; }
+.diff .pips i { width: 7px; height: 7px; }
+.ctx { font-size: 12px; font-weight: 700; line-height: 1.45; color: var(--pen); }
 .qt { flex: 1; min-width: 0; font: 400 18px/1.3 var(--f-disp); text-wrap: balance; }
 .hint-btn { flex: none; appearance: none; border: 1.5px solid var(--accent); background: transparent; color: var(--accent); border-radius: 99px; padding: 1px 11px; font-size: 12px; font-weight: 700; cursor: pointer; }
 .hint-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
@@ -171,6 +179,7 @@ button { font: inherit; color: inherit; }
 .score span { font: 600 20px var(--f-mono); color: var(--muted); }
 .score em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--pen-ink); background: var(--pen); padding: 2px 10px; border-radius: 99px; }
 .msg { font-size: 15px; font-weight: 500; line-height: 1.6; margin-top: 6px; }
+.msg-live { font-size: 13.5px; color: var(--muted); }
 .rlist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .rlist li { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .chip { font-size: 11.5px; font-weight: 700; text-align: center; padding: 1px 0; border-radius: 99px; color: var(--on-sem); white-space: nowrap; }
@@ -263,5 +272,8 @@ button { font: inherit; color: inherit; }
 <script src="data1.js"></script>
 <script src="data2.js"></script>
 <script src="data3.js"></script>
+<script src="data4.js"></script>
+<script src="live.js"></script>
+<script src="logic.js"></script>
 <script src="budoux.js"></script>
 <script src="app.js"></script>

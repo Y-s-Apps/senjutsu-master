@@ -6,6 +6,7 @@
 - 読み込みは「高いレベルだけ更新」で、記録が下がらない
 - 途中で切れた・書き換えたコード、別のファイル、大きすぎるファイルは読まず、記録も変えない
 - 範囲外の値（満点より大きい・知らないレベル）は捨てる
+- 名将の戦術（club）の記録も、レベルと同じように移せる
 - HTML を仕込んだファイルを選んでも、画面に差し込まれず、実行もされない
 - 外部への通信・CSP 違反・JS エラーがない
 必要なもの: pip install playwright && playwright install chromium
@@ -93,7 +94,7 @@ with sync_playwright() as p:
     ok('ファイルで移る', stored(pg) == {'basic': 10, 'coach': 6} and '移しました' in msg, (stored(pg), msg))
     pg.keyboard.press('Escape')
     best = pg.locator('.lv-best b').all_inner_texts()
-    ok('ホームに反映', best == ['10', '—', '6'], best)
+    ok('ホームに反映', best[:4] == ['10', '—', '6', '—'], best)
     ctx.close()
 
     # 3) コードを貼り付け（空白・改行・全角）、高いほうだけ更新
@@ -128,6 +129,9 @@ with sync_playwright() as p:
     ok('形の違うコードは読まない', stored(pg) == before and '欠けているか' in msg, msg)
     msg = take_code(pg, signed('team=11,basic=13'))
     ok('範囲内だけを使う', stored(pg) == {**before, 'team': 11}, (stored(pg), msg))
+    before = stored(pg)
+    msg = take_code(pg, signed('club=9'))
+    ok('名将の戦術の記録も移せる', stored(pg) == {**before, 'club': 9} and '名将 —→9' in msg, (stored(pg), msg))
     before = stored(pg)
 
     # 5) 仕込んだファイル・大きなファイル

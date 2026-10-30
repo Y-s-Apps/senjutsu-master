@@ -1,6 +1,6 @@
 # 戦術マスター — notes for working on this repo
 
-戦術ボードの状況を読んで次のプレーを選び、選手の動きと解説で理由を学ぶサッカー戦術クイズ。初級・中級・上級（指導者向け）×各6問。
+戦術ボードの状況を読んで次のプレーを選び、選手の動きと解説で理由を学ぶサッカー戦術クイズ。初級・中級・上級（指導者向け）×各16問、「名将の戦術」15問、「前節の一戦」（J1 の直近の節から作る問題）。1回に6問を出す。
 アプリ名は「戦術マスター」、リポジトリ名と URL は `senjutsu-master`（2026-10-29 に「サッカー戦術ドリル」／`senjutsu-drill` から変更）。自己ベストの保存キー `tacdrill-best-v1` だけは旧名由来のまま（同じドメイン y-s-apps.github.io なので、キーを変えなければブラウザの記録が引き継がれる）。
 GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジトリ `Y-s-Apps/senjutsu-master` の `main` ブランチ直下をそのまま配信）
 作者の個人の GitHub アカウント名は、公開されるファイル・URL・コミットに出さない（組織 Y-s-Apps で公開している）
@@ -11,11 +11,14 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - repo root = 公開サイト。`index.html` と `sw.js` は `dev/build.js` の生成物なので**手で編集しない**。
   `manifest.webmanifest`・アイコン（`dev/icons/make_icons.py` が描く）・`.nojekyll` は直下に置いたまま。
 - `dev/src/page.html` — CSS とページ骨格（アーティファクトの書き方: doctype/html/head/body なし、先頭に `<title>`）。
-- `dev/src/app.js` — 画面・ピッチ描画・アニメーション・採点・改行処理（`phrase()`）。`dev/src/data1.js`〜`data3.js` — 問題データ（Lv.1〜3）。
+- `dev/src/app.js` — 画面・ピッチ描画・アニメーション・採点・改行処理（`phrase()`）。`dev/src/data1.js`〜`data3.js` — 問題データ（Lv.1〜3）。`dev/src/data4.js` — 名将の戦術（`window.CLUB`）。
+- `dev/src/logic.js` — 出題の仕組み（`window.TM`）: 問題の選び方 `pick`・選択肢の並べ替え `prep`・前節の決め方 `lastRound`。画面に触らない関数だけ（node でも動く）。
+- `dev/src/live/<リーグ>-<開幕年>/` — 前節の一戦のデータ（JSON）。`schedule.json`（日程）と `<節>.json`（その節の分析と問題）。`dev/livedata.js` が読み、build.js が `window.LIVE` にして埋め込む。
 - `dev/src/budoux.js` — BudouX 0.6.4（Apache-2.0）の日本語パーサを1ファイルにまとめたもの。改行位置を決めるためだけに使う。手で編集しない。
-- `dev/build.js` — script（`SCRIPT_FILES` に並べたもの。HTML は正規表現で読まず、決まった `<script src>` の文字列を置き換える）をインライン化して、直下の `index.html`（PWA 用 head・CSP・service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html`（フォントを data: で埋め込んだ1ファイル）を書き出す。ソースに `fonts/` にない文字が出てきたらビルドを止めるので、`python3 dev/fonts/make_fonts.py` を実行してからビルドし直す（要 `pip install fonttools brotli`）。
-- `dev/check.js` — 問題データの確認（型・ID・ベストの数・座標など。誤りがあれば終了コード 1）。
-- `dev/test/fit.py` — Playwright でローカルの Web サーバーから開き（`fonts/` の実フォントで測る）、全18問・全タブについて、1画面に収まっているか（縦横どちらもスクロールなし）、行頭に助詞・句読点・閉じ括弧が来ていないか、外部への通信・CSP 違反がないか、フォントが読み込めたかを確認（`--shots` でスクショ）。
+- `dev/build.js` — script（`SCRIPT_FILES` に並べたもの。`live.js` だけはファイルではなく live/ の JSON から作る。HTML は正規表現で読まず、決まった `<script src>` の文字列を置き換える）をインライン化して、直下の `index.html`（PWA 用 head・CSP・service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html`（フォントを data: で埋め込んだ1ファイル）を書き出す。ソースに `fonts/` にない文字が出てきたらビルドを止めるので、`python3 dev/fonts/make_fonts.py` を実行してからビルドし直す（要 `pip install fonttools brotli`）。
+- `dev/check.js` — 問題データの確認（型・ID・ベストの数・座標・文に記号 A/B/C を書いていないか・日程の形など。誤りがあれば終了コード 1）。
+- `dev/test/logic.js` — 出題の仕組みの確認（node）。並べ替えのかたより・前回の問題が続けて出ない・ひと回りで全問・前節の判定（水曜開催・別日の試合・end・分析のない節・シーズンの切れ目）。
+- `dev/test/fit.py` — Playwright でローカルの Web サーバーから開き（`fonts/` の実フォントで測る）、レベルと名将の戦術は全問が出るまで続けて遊び、前節の一戦は問題のある節ごとに日時を合わせて遊ぶ。全問・全タブについて、1画面に収まっているか（縦横どちらもスクロールなし）、行頭に助詞・句読点・閉じ括弧が来ていないか、前回の問題が続けて出ないか、選択肢が並べ替えられているか、外部への通信・CSP 違反がないか、フォントが読み込めたかを確認（`--shots` でスクショ）。
 - `dev/test/move.py` — 「記録の引っこし」の確認。ファイル・コードでの持ち出しと読み込み、高いほうだけの更新、切れた・書き換えた・範囲外・HTML を仕込んだ・大きすぎるものを読まないこと。
 - `dev/test/offline.py` — サイトのコピーを `/senjutsu-master/` の位置で配信し、service worker を登録して、オフライン・別ページや 404 を開いたあと・サーバーの 500・新しい版への切り替えでも正しく動くかを確認。引数にフォルダを渡すと、そのビルドを試せる。
 - `fonts/` — アプリで使う文字だけを収めたフォント（woff2）。`dev/fonts/make_fonts.py` が google/fonts の決まったコミットから元のフォントを取り（SHA-256 を確認、`dev/fonts/.cache/` は git に入れない）、サブセットを作る。作った文字の一覧は `dev/fonts/chars.txt`。内部名は TM Display / TM Gothic / TM Mono（IBM Plex の予約フォント名「Plex」を使わないため）。手で編集しない。
@@ -23,18 +26,40 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 
 ## 変更の流れ
 1. `dev/src/` を編集
-2. `node dev/check.js` → `node dev/build.js` → 画面を変えたら `python3 dev/test/fit.py`、service worker（`build.js` の sw 部分）を変えたら `python3 dev/test/offline.py`、自己ベストや記録の引っこしを変えたら `python3 dev/test/move.py`
+2. `node dev/check.js` → `node dev/build.js` → 画面を変えたら `python3 dev/test/fit.py`、出題の仕組み（logic.js）や日程を変えたら `node dev/test/logic.js`、service worker（`build.js` の sw 部分）を変えたら `python3 dev/test/offline.py`、自己ベストや記録の引っこしを変えたら `python3 dev/test/move.py`
 3. コミットして `main` に push（Pages が1〜2分で更新）。アーティファクトも合わせるなら `dev/dist/artifact.html` を上記 URL へ publish。
 - main には ruleset（`main`）があり、削除と強制 push を禁止している（pull request は不要なので、普通の push は通る）。秘密の値（トークン・鍵など）を含む push は push protection に止められる。push のたびに code scanning（CodeQL）が走る。
 - service worker はページ本体（`./` と `index.html`）をネット優先で取得するので、push 後は再読み込みで新しい版になる。保存するのは正常な応答（200）だけで、ネットが使えない・エラーのときは保存済みのページを出す。アイコン・フォントなど CORE のファイルは保存済み優先。それ以外（`licenses/` などの別ページ）には関わらず、保存もしない。新しい版が有効になると古い版の保存データ（`senjutsu-master-<版>`）を消す。
 - y-s-apps.github.io は組織 Y-s-Apps の Pages すべて（senjutsu-master・uchinoko-biyori・shinpan-dojo・kuratsuku・kamiashi）が共有する1つのオリジン。localStorage・IndexedDB・Cache Storage・service worker は、組織のほかの Pages（とくに `y-s-apps.github.io` という名前のリポジトリを作るとサイト全体の直下になる）からも触れる。保存キーとキャッシュ名はアプリ名で始め、ほかのアプリのものを消さない（2026-10-29 に5つとも確認済み）。ほかの人が書いたものを組織の Pages で公開しない。
 
-## 問題データの書き方（`window.LEVELS[n].q[]`）
+## 出題の仕組み（`dev/src/logic.js`）
+- 1回に6問（`TM.SESSION`）。自己ベストの満点は 6×2=12 点のまま（問題が増えても記録は引き継がれる）。
+- 選択肢は毎回並べ替え、表示の記号（A/B/C）を並び順に振り直す（`prep`。元のデータは変えない）。だから**文の中に記号を書かない**（check.js が止める）。
+- 問題の選び方（`pick`）: 直近に出した問題（最後の max(6, 全体−8) 問。候補が6問を切らない範囲）を避け、まだ出ていない問題→場面（攻撃・守備…）が少ないもの→古いもの→ランダムの順に選び、出題順もシャッフル。各デッキ12問以上あれば、前回の問題は続けて出ない。
+- 出題の履歴は localStorage `senjutsu-master-recent-v1`（デッキの id ごとに問題 id の配列）。問題を表示した時点で記録する。ほかのページからも書き換えられるので、読むときに「知っている id の文字列」だけを残す（`loadHist()`）。
+- デッキ: レベル3つ（`window.LEVELS`）と名将の戦術（`window.CLUB`）は自己ベストと履歴を残す（`REC`）。前節の一戦は残さない。
+
+## 前節の一戦（`dev/src/live/`）
+- 「前節」= いまの日時（日本時間）で終わっている節のうち、いちばん最近に終わった節（`TM.lastRound`）。終わった時刻は、`end`（`"2026-11-01T18:15:00+09:00"` の形、最後のキックオフ＋2時間15分が目安）があればそれ、なければ `dates` の最後の日の翌日 0 時。水曜開催の節も同じ規則（翌日から前節になる）。`later`（別の日に回った一部の試合）は待たない。
+- その節の `<節>.json` がまだなければ、問題のある直近の節を使い、ホームのカードに「第N節は分析の準備中」と出す。シーズンの切れ目は、新しいシーズンの第1節が終わるまで前のシーズンの最終節。
+- `schedule.json`: `{ league: "j1", name: "J1", season: "2026/27", source: "…", matchdays: [{ no, dates: ["YYYY-MM-DD", …], later?: [...], end?: "…" }] }`。節は1行ずつ、1から順に。2027年分（第21節〜）は候補日なので、12月上旬の正式発表で差し替える。
+- `<節>.json`: `{ summary: "その節の傾向（結果画面に出る。70字ほど）", q: [問題…] }`。問題の形はレベルと同じで、`lv`（難しさ1〜3）が必要、`ctx`（「第12節 · 首位争いの直接対決」など）は任意。id はファイルの場所から自動（`j1-2026-12-1`）。
+- 節を足す手順: その節の試合の記事・公式記録を調べる → 戦術や攻守のパターンを5〜6問にする → `dev/src/live/j1-2026/<節>.json` を置く → check.js → build.js → fit.py（その節の日時に合わせて自動で遊ぶ）。
+- **実名を使わない**: クラブ名・監督名・選手名は書かない（架空の名前か「首位のチーム」などの言い方）。リーグ名と節の番号は使ってよい。点差や順位も、チームが特定されすぎない書き方にする。
+
+## 名将の戦術（`dev/src/data4.js`）
+- 実在のクラブ・監督・実際の試合の戦術をモデルにした問題。**クラブ名・監督名・選手名・国名はすべて架空**（`ctx` に「ブラウ・ハーフェン · エルケン監督」の形で出す）。戦術の中身（システム・ビルドアップ・プレスのかけ方など）は現実に寄せる。
+- 架空の名前は、有名な選手・監督・クラブの名前と重ならないように選ぶ。モデルになった試合や人物を説明するときも名前を出さない（「大差を逆転した有名な試合」など）。
+
+## 問題データの書き方（`window.LEVELS[n].q[]`・`window.CLUB.q[]`・live の `q`）
 - 座標はメートル。ピッチは 68×105、`y=0` が相手ゴール、味方は常に**上へ**攻める（守備の問題も同じ向き）。
-- `t` 状況の見出し（答えを言わない）、`ph` 'atk'|'def'|'tr'|'coach'、`me` 'h6' など（「あなた」リング）、`view` [x, y, w, h]（ボードに映す範囲）。
+- `id` 問題の id（レベルは b01・t01・c01…、名将は m01…。履歴に使うので変えない。live は自動）。
+- `t` 状況の見出し（答えを言わない）、`ph` 'atk'|'def'|'tr'|'set'|'coach'（セットプレーは 'set'）、`me` 'h6' など（「あなた」リング）、`view` [x, y, w, h]（ボードに映す範囲）。
+- 名将の戦術と前節の一戦は `lv`（難しさ 1〜3、問題画面に ●●○ で出る）、名将は `ctx`（架空のクラブ名・監督名）も必須。
 - `h` 味方 / `a` 相手: `[背番号, x, y]`。1番は GK の見た目。`ball` [x, y]（表示は足元へ少しずらす）。
 - `line` オフサイドラインの y（任意）、`lanes: true` で5レーンを表示（任意）。
 - `s` 状況、`q` 問い、`hint`（Lv.1 は必須）、`ex` 解説、`key` [用語, 説明]、`coach`・`drill`（Lv.3 は必須）。
+- 文の長さの目安: `s` は60字前後まで（`ctx` の行があるときはさらに短く）、選択肢 `l` は24字前後まで、見出し `t` は 360px 幅で1行に収まる長さ。超えると 360×620 で回答前のパネルがはみ出す（fit.py が止める）。
 - `opts`: `{ k, l, sc, why, ar?, mk?, at? }`。`sc` は 2=ベスト（**各問ちょうど1つ**）/1=悪くない/0=要注意。
   `ar` 矢印 `[[始点], [終点], 'pass'|'run'|'drib'|'look', [制御点]?]` の配列、`mk` 立ち位置の印 [x, y]、`at` 記号（A/B/C）の位置を手で指定。
 - `play`: 回答後のアニメーション。`[{ m: { h9: [x, y], a4: [x, y] }, b: [x, y] }, …]` を約1秒ずつ順に再生。
@@ -45,10 +70,10 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - 横長の画面（幅 720px 以上かつ 5:4 より横長）はボード左・問題右の2列。
 - 戦術に唯一の正解はない、という立場。「悪くない」選択肢には、それが有効になる状況も書く。
 - **配色は黒ベースの1テーマ**（ユーザーの指定）。端末のライト/ダーク設定に合わせて変えない。色はすべて `page.html` 冒頭の `:root` トークンから取り、ライト用の定義は作らない。manifest・theme-color（`dev/build.js`）も同じ `#0E1310`。
-- **改行位置に気をつける**（ユーザーの指定）。日本語は文節の境目でだけ折り返す: body は `word-break: keep-all`、描画後に `phrase()` が BudouX で文節の間に `<wbr>` を入れ、助詞などで始まる文節は前につなげ、閉じ括弧の直後は U+2060 でつなぐ。innerHTML で文を差し込んだら、その要素に `phrase()` をかける。1行のラベルは `white-space: nowrap`（`phrase()` は nowrap の要素を飛ばす）。見出しとリード文は `text-wrap: balance`、本文は `pretty`。「…」で省略せず、折り返して収める。
-- 自己ベストは localStorage（キー `tacdrill-best-v1`）。キーを変えると記録が消える。同じドメイン y-s-apps.github.io の組織のほかの Pages からも読み書きできるので、`loadBest()` は `cleanBest()` を通して「知っているレベルの id と 0〜満点の整数」だけを残し、それ以外は捨てる。
+- **改行位置に気をつける**（ユーザーの指定）。日本語は文節の境目でだけ折り返す: body は `word-break: keep-all`、描画後に `phrase()` が BudouX で文節の間に `<wbr>` を入れ、助詞などで始まる文節は前につなげ、閉じ括弧の直後は U+2060 でつなぐ。innerHTML で文を差し込んだら、その要素に `phrase()` をかける。1行のラベルは `white-space: nowrap`（`phrase()` は nowrap の要素を飛ばす）。見出しとリード文は `text-wrap: balance`、本文は `pretty`。「…」で省略せず、折り返して収める。読点の直後に助詞が来る書き方（「〜を置く、の3つ」）は、ブラウザが読点のあとで折って行頭が「の」になるので避ける（「〜を置く、という3つ」）。
+- 自己ベストは localStorage（キー `tacdrill-best-v1`）。キーを変えると記録が消える。同じドメイン y-s-apps.github.io の組織のほかの Pages からも読み書きできるので、`loadBest()` は `cleanBest()` を通して「知っているデッキの id（basic・team・coach・club）と 0〜満点の整数」だけを残し、それ以外は捨てる。
 - **記録の引っこし**（ホームの「記録の引っこし」）: localStorage は URL（オリジン）・ホーム画面のアプリと Safari・端末ごとに別なので、自己ベストをファイルかコードで持ち出し、読み込めるようにしている（クラつくで長い引き継ぎコードが貼り付けで壊れ、移せなかったことから）。
-  - コードは `SENJUTSU1:basic=10,coach=6:xxxx`（記録のあるレベルだけ。末尾4文字は FNV-1a の確認用で、欠け・書き換えを見つける）。ファイル `senjutsu-master-kiroku.txt` は説明2行とこのコード。
+  - コードは `SENJUTSU1:basic=10,coach=6:xxxx`（記録のあるデッキだけ。名将の戦術は `club`。末尾4文字は FNV-1a の確認用で、欠け・書き換えを見つける）。ファイル `senjutsu-master-kiroku.txt` は説明2行とこのコード。
   - 保存は、アーティファクトではホストの保存確認（`downloads` の capability。publish のときに `capabilities: {downloads: true}` を宣言する）、ホーム画面のアプリ・Safari では共有シート（「"ファイル"に保存」）、どちらもなければ通常のダウンロード。
   - 読み込んだものは信用しない: 4096 文字・バイトまで、NFKC と空白の除去のあと形と確認用の文字を確かめ、`cleanBest()` を通す。今の記録より高いレベルだけを更新する（読み込みで記録は下がらない）。メッセージは textContent で出す。
   - レベルを足すときは、id（英小文字）をコードにそのまま使うので、既存の id を変えない。`dev/test/move.py` で確かめる。

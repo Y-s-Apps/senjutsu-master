@@ -1,18 +1,26 @@
 (() => {
   'use strict';
+  const TM = window.TM; // logic.js（問題の選び方・選択肢の並べ替え・前節の決め方）
   const LV = window.LEVELS;
+  const CLUB = window.CLUB;
+  const REC = [...LV, CLUB]; // 自己ベストと出題の履歴を残すもの（id は記録の引っこしのコードにも使う）
+  LV.forEach(L => { L.short = `Lv.${L.no} ${L.name}`; }); // 問題画面の上の表示
+  const mvName = D => D.mv || D.name; // 記録の引っこしでの呼び名（初級・中級・上級・名将）
   const app = document.getElementById('app');
-  const PH = { atk: '攻撃', def: '守備', tr: '切り替え', coach: '指導場面' };
+  const PH = { atk: '攻撃', def: '守備', tr: '切り替え', set: 'セットプレー', coach: '指導場面' };
+  const LVN = ['', '初級', '中級', '上級'];
   const RES = ['要注意', '悪くない', 'ベスト'];
   const VERDICT = ['ここは要注意', '悪くない選択', 'ベスト！'];
   const BO = [1.35, -1.15]; // ボールは選手の足元に少しずらして置く
   const KEY = 'tacdrill-best-v1';
+  const HKEY = 'senjutsu-master-recent-v1'; // 直近に出した問題（同じ問題が続けて出ないように）
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const S = { lv: 0, qi: 0, ans: [], done: false, hint: false, timers: [], screen: 'home' };
+  // deck: いま遊んでいるもの（レベル・名将の戦術・前節の一戦）、qs: 今回出す問題（選択肢は並べ替え済み）
+  const S = { deck: null, qs: [], qi: 0, ans: [], done: false, timers: [], screen: 'home' };
 
   const f = n => Math.round(n * 100) / 100;
-  const maxOf = L => L.q.length * 2;
-  const cur = () => LV[S.lv].q[S.qi];
+  const maxOf = D => Math.min(D.q.length, TM.SESSION) * 2;
+  const cur = () => S.qs[S.qi];
   // 画面へ差し込む文字はすべて esc() を通す（問題データは自前だが、念のため HTML として解釈させない）。
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   // 自己ベストは同じドメイン（y-s-apps.github.io）のほかのページからも書き換えられるので、
@@ -21,9 +29,9 @@
   const cleanBest = raw => {
     const out = {};
     if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      LV.forEach(L => {
-        const v = raw[L.id];
-        if (Number.isInteger(v) && v >= 0 && v <= maxOf(L)) out[L.id] = v;
+      REC.forEach(D => {
+        const v = raw[D.id];
+        if (Number.isInteger(v) && v >= 0 && v <= maxOf(D)) out[D.id] = v;
       });
     }
     return out;
@@ -34,6 +42,24 @@
     return cleanBest(raw);
   };
   const saveBest = o => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* 保存できない環境では無視 */ } };
+  // 出題の履歴も、ほかのページから書き換えられる前提で読む: 知っている id の文字列だけを残す。
+  const loadHist = () => {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(HKEY)); } catch (e) { raw = null; }
+    const out = {};
+    REC.forEach(D => {
+      const known = new Set(D.q.map(q => q.id));
+      const a = raw && typeof raw === 'object' && Array.isArray(raw[D.id]) ? raw[D.id] : [];
+      out[D.id] = a.filter(x => typeof x === 'string' && known.has(x)).slice(-D.q.length);
+    });
+    return out;
+  };
+  const seen = (D, id) => {
+    if (!REC.includes(D)) return;
+    const h = loadHist();
+    h[D.id] = TM.remember(h[D.id], id, D.q.length);
+    try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch (e) { /* 保存できない環境では無視 */ }
+  };
   const total = () => S.ans.reduce((a, x) => a + (x ? x.sc : 0), 0);
 
   /* ---------- ピッチ描画 ---------- */
@@ -198,6 +224,41 @@
   /* ---------- 画面: ホーム ---------- */
   const TWO_COL = '(min-width: 720px) and (min-aspect-ratio: 5/4)';
   function pips(n) { return [0, 1, 2].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join(''); }
+  const CLUB_ICON = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 16 12"><rect x=".7" y=".7" width="14.6" height="10.6" rx="1.4"/><path d="M8 .7V11.3"/><circle cx="8" cy="6" r="2"/></svg></span>';
+
+  // レベルと「名将の戦術」のカード: 名前・題・自己ベスト、2行目に対象・特徴・問題数
+  function card(D, mark, label, best) {
+    const b = best[D.id];
+    return `<button class="lv" data-start="${esc(D.id)}" aria-label="${esc(label)} ${esc(D.title)}">
+      <span class="lv-head">${mark}<span class="lv-name">${esc(label)}</span><span class="lv-title">${esc(D.title)}</span><span class="lv-best">最高<b>${b == null ? '—' : esc(b)}</b>/${maxOf(D)}</span></span>
+      <span class="lv-who"><span>${esc(D.who)}${LV.includes(D) ? '向け' : ''}</span>${D.feat ? `<span class="lv-tag">${esc(D.feat)}</span>` : ''}<span class="lv-n">全${D.q.length}問</span></span>
+    </button>`;
+  }
+
+  // 前節の一戦: いまの日時（日本時間）から、終わっている直近の節を選ぶ（logic.js の lastRound）
+  const liveInfo = () => {
+    const L = (window.LIVE || [])[0];
+    return L ? { L, ...TM.lastRound(L, Date.now()) } : null;
+  };
+  function liveCard() {
+    const li = liveInfo(); if (!li) return '';
+    const { L, done, ready, next, latest } = li;
+    const head = ready ? `${L.name} 第${ready.md.no}節` : L.name;
+    const sub = ready
+      ? (latest ? `${TM.dateLabel(ready.md.dates)}の試合から` : `第${done.md.no}節は分析の準備中。第${ready.md.no}節（${TM.dateLabel(ready.md.dates)}）から`)
+      : done ? `第${done.md.no}節は分析の準備中です`
+        : next ? `第${next.md.no}節（${TM.dateLabel(next.md.dates)}）が終わると始まります` : '分析を準備中です';
+    return `<button class="lv lv-live" data-start="live"${ready ? '' : ' disabled'} aria-label="前節の一戦 ${esc(head)}">
+      <span class="lv-head"><span class="ico live" aria-hidden="true"><i></i></span><span class="lv-name">前節の一戦</span><span class="lv-title">${esc(head)}</span>${ready ? `<span class="lv-best"><b>${Math.min(ready.round.q.length, TM.SESSION)}</b>問</span>` : ''}</span>
+      <span class="lv-who"><span>${esc(sub)}</span><span class="lv-tag">名前は架空</span></span>
+    </button>`;
+  }
+  // 前節の一戦を遊ぶときのデッキ（自己ベストは残さない）
+  function liveDeck() {
+    const li = liveInfo(); if (!li || !li.ready) return null;
+    const { L, ready } = li;
+    return { id: 'live', live: true, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
+  }
 
   function home() {
     S.screen = 'home'; clearTimers();
@@ -222,15 +283,10 @@
           <button class="link move-link" id="moveOpen" aria-haspopup="dialog" aria-label="記録の引っこし・バックアップ">記録の引っこし</button>
         </div>
       </div>
-      <nav class="levels" aria-label="レベルを選ぶ">
-        ${LV.map((L, i) => {
-          const b = best[L.id];
-          return `<button class="lv" data-start="${i}" aria-label="Lv.${esc(L.no)} ${esc(L.name)} ${esc(L.title)}">
-            <span class="lv-head"><span class="pips" aria-hidden="true">${pips(L.no)}</span><span class="lv-name">${esc(L.name)}</span><span class="lv-title">${esc(L.title)}</span><span class="lv-best">最高<b>${b == null ? '—' : esc(b)}</b>/${maxOf(L)}</span></span>
-            <span class="lv-who">${esc(L.who)}向け${L.feat ? `<span class="lv-tag">${esc(L.feat)}</span>` : ''}</span>
-            <span class="lv-topics">${L.q.map(q => `<span>${esc(q.key[0].replace(/（.*?）/, ''))}</span>`).join(' ')}</span>
-          </button>`;
-        }).join('')}
+      <nav class="levels" aria-label="遊ぶものを選ぶ">
+        ${LV.map(L => card(L, `<span class="pips" aria-hidden="true">${pips(L.no)}</span>`, L.name, best)).join('')}
+        ${card(CLUB, CLUB_ICON, CLUB.name, best)}
+        ${liveCard()}
       </nav>
     </div>`;
     phrase(app);
@@ -238,7 +294,7 @@
 
   /* ---------- 画面: 問題 ---------- */
   function dots() {
-    return LV[S.lv].q.map((_, i) => {
+    return S.qs.map((_, i) => {
       const a = S.ans[i];
       return `<li class="${a ? 'r' + a.sc : (i === S.qi ? 'now' : '')}"></li>`;
     }).join('');
@@ -246,14 +302,15 @@
 
   function question() {
     S.screen = 'play'; S.done = false; S.tab = 'why'; clearTimers();
-    const L = LV[S.lv], s = cur(), v = s.view;
+    const D = S.deck, s = cur(), v = s.view;
+    seen(D, s.id);
     app.innerHTML = `
-    <div class="screen play">
+    <div class="screen play" data-qid="${esc(s.id)}">
       <nav class="bar">
-        <button class="link back" id="back" aria-label="レベル選択へ戻る">←</button>
-        <span class="bar-lv">Lv.${esc(L.no)} ${esc(L.name)}</span>
+        <button class="link back" id="back" aria-label="ホームへ戻る">←</button>
+        <span class="bar-lv">${esc(D.short)}</span>
         <ol class="dots" aria-hidden="true">${dots()}</ol>
-        <span class="bar-q">${S.qi + 1}<small>/${L.q.length}</small></span>
+        <span class="bar-q">${S.qi + 1}<small>/${S.qs.length}</small></span>
         <span class="bar-pt"><b id="pt">${total()}</b>点</span>
       </nav>
       <div class="stage">
@@ -267,9 +324,11 @@
         <section class="panel" id="panel">
           <div class="qhead">
             <span class="phase ph-${s.ph}">${PH[s.ph]}</span>
+            ${s.lv ? `<span class="diff" role="img" aria-label="難しさ ${LVN[s.lv]}"><span class="pips" aria-hidden="true">${pips(s.lv)}</span></span>` : ''}
             <h2 class="qt">${esc(s.t)}</h2>
             ${s.hint ? '<button class="hint-btn" id="hintBtn" aria-pressed="false">ヒント</button>' : ''}
           </div>
+          ${s.ctx ? `<p class="ctx">${esc(s.ctx)}</p>` : ''}
           <p class="sit">${esc(s.s)}</p>
           <p class="qq">${esc(s.q)}</p>
           <div class="opts" role="group" aria-label="選択肢">
@@ -351,7 +410,7 @@
 
   function choose(k) {
     if (S.done) return;
-    const s = cur(), L = LV[S.lv];
+    const s = cur();
     const o = s.opts.find(x => x.k === k); if (!o) return;
     S.done = true;
     S.ans[S.qi] = { k, sc: o.sc };
@@ -370,50 +429,63 @@
 
     const panel = document.getElementById('panel');
     panel.classList.add('is-fb');
-    panel.innerHTML = fbHTML(s, o, 'why', S.qi === L.q.length - 1);
+    panel.innerHTML = fbHTML(s, o, 'why', S.qi === S.qs.length - 1);
     phrase(panel);
     play(s);
   }
 
   function next() {
-    const L = LV[S.lv];
-    if (S.qi < L.q.length - 1) { S.qi++; question(); } else result();
+    if (S.qi < S.qs.length - 1) { S.qi++; question(); } else result();
   }
 
   /* ---------- 画面: 結果 ---------- */
+  // 次へ進むボタン: 初級→中級→上級→名将の戦術
+  const nextDeck = D => { const i = LV.indexOf(D); return i < 0 ? null : (LV[i + 1] || CLUB); };
   function result() {
     S.screen = 'result'; clearTimers();
-    const L = LV[S.lv], sc = total(), mx = maxOf(L), pct = sc / mx;
-    const best = loadBest(); const prev = best[L.id];
-    const isNew = prev == null || sc > prev;
-    if (isNew) { best[L.id] = sc; saveBest(best); }
-    const msg = pct >= 0.85
-      ? (S.lv === 2 ? '構造と言葉の両方で説明できるレベルです。' : '戦術眼あり。次のレベルへ進みましょう。')
-      : pct >= 0.6 ? '原則はつかめています。「要注意」の問題を見直すとさらに伸びます。'
-        : '原則をひとつずつ。解説を読んで、もう一度挑戦してみましょう。';
+    const D = S.deck, sc = total(), mx = S.qs.length * 2, pct = sc / mx;
+    let isNew = false;
+    if (REC.includes(D)) {
+      const best = loadBest(), prev = best[D.id];
+      isNew = prev == null || sc > prev;
+      if (isNew) { best[D.id] = sc; saveBest(best); }
+    }
+    const msg = D.live ? D.summary
+      : pct >= 0.85
+        ? (D === CLUB ? '名将たちの狙いを読み取れています。' : D === LV[LV.length - 1] ? '構造と言葉の両方で説明できるレベルです。' : '戦術眼あり。次のレベルへ進みましょう。')
+        : pct >= 0.6 ? '原則はつかめています。「要注意」の問題を見直すとさらに伸びます。'
+          : '原則をひとつずつ。解説を読んで、もう一度挑戦してみましょう。';
+    const nx = nextDeck(D);
     app.innerHTML = `
     <div class="screen result">
       <div class="r-head">
-        <p class="eyebrow">Lv.${esc(L.no)} ${esc(L.name)} · ${esc(L.title)}</p>
+        <p class="eyebrow">${esc(D.short)} · ${esc(D.live ? D.name : D.title)}</p>
         <div class="score"><b>${sc}</b><span>/ ${mx}</span>${isNew ? '<em>自己ベスト</em>' : ''}</div>
-        <p class="msg">${msg}</p>
+        <p class="msg${D.live ? ' msg-live' : ''}">${esc(msg)}</p>
       </div>
       <ol class="rlist">
-        ${L.q.map((q, i) => {
+        ${S.qs.map((q, i) => {
           const a = S.ans[i] || { sc: 0 };
           return `<li><span class="chip c${a.sc}">${RES[a.sc]}</span><span class="rt"><b>${esc(q.t)}</b><small>${esc(q.key[0])}</small></span></li>`;
         }).join('')}
       </ol>
       <div class="acts">
-        <button class="btn ghost" id="retry">もう一度</button>
-        ${S.lv < LV.length - 1 ? `<button class="btn" id="nextLv">Lv.${esc(L.no + 1)} ${esc(LV[S.lv + 1].name)}へ →</button>` : ''}
-        <button class="btn ghost" id="toHome">レベル選択</button>
+        <button class="btn ghost" id="retry">${D.live ? 'もう一度' : '別の問題で'}</button>
+        ${nx ? `<button class="btn" id="nextLv">${esc(nx === CLUB ? nx.title : nx.short)}へ →</button>` : ''}
+        <button class="btn ghost" id="toHome">ホームへ</button>
       </div>
     </div>`;
     phrase(app);
   }
 
-  function start(i) { S.lv = i; S.qi = 0; S.ans = []; question(); }
+  // 遊び始める: 問題を選び（直近に出たものを避け、場面がばらけるように）、選択肢を並べ替える
+  function start(D) {
+    if (!D || !D.q.length) return home();
+    S.deck = D; S.qi = 0; S.ans = [];
+    S.qs = TM.pick(D.q, TM.SESSION, REC.includes(D) ? loadHist()[D.id] : []).map(q => TM.prep(q));
+    question();
+  }
+  const deckOf = id => (id === 'live' ? liveDeck() : REC.find(D => D.id === id));
 
   /* ---------- 記録の引っこし（自己ベストをファイルかコードで持ち出す・読み込む） ----------
      自己ベストは localStorage なので、URL（オリジン）が変わる・ホーム画面のアプリと Safari・別の端末では引き継がれない。
@@ -428,7 +500,7 @@
     return (h % 1679616).toString(36).padStart(4, '0');
   };
   const makeCode = best => {
-    const body = LV.filter(L => best[L.id] != null).map(L => `${L.id}=${best[L.id]}`).join(',');
+    const body = REC.filter(D => best[D.id] != null).map(D => `${D.id}=${best[D.id]}`).join(',');
     return `${CODE_V}:${body}:${check(`${CODE_V}:${body}`)}`;
   };
   function readCode(text) {
@@ -456,7 +528,7 @@
     big: '大きすぎて読めませんでした。戦術マスターで保存したファイルを選んでください。',
     nodata: '読み込める記録が入っていませんでした。'
   };
-  const bestLine = best => LV.map(L => `${L.name} ${best[L.id] == null ? '—' : best[L.id]}/${maxOf(L)}`).join('・');
+  const bestLine = best => REC.map(D => `${mvName(D)} ${best[D.id] == null ? '—' : best[D.id]}/${maxOf(D)}`).join('・');
 
   async function saveFile(text) {
     // アーティファクトではホストの保存確認（downloads）、ホーム画面のアプリ・Safari では共有シート（「ファイル」に保存）、どちらもなければ通常のダウンロード
@@ -527,9 +599,9 @@
       const r = readCode(text);
       if (!r.best) return msg(MOVE_ERR[r.reason]);
       const now = loadBest(), up = [];
-      LV.forEach(L => {
-        const v = r.best[L.id];
-        if (v != null && (now[L.id] == null || v > now[L.id])) { up.push(`${L.name} ${now[L.id] == null ? '—' : now[L.id]}→${v}`); now[L.id] = v; }
+      REC.forEach(D => {
+        const v = r.best[D.id];
+        if (v != null && (now[D.id] == null || v > now[D.id])) { up.push(`${mvName(D)} ${now[D.id] == null ? '—' : now[D.id]}→${v}`); now[D.id] = v; }
       });
       if (!up.length) return msg('読み込んだ記録は、いまの記録と同じか低いので、変わりませんでした。');
       saveBest(now);
@@ -557,7 +629,7 @@
     const t = e.target;
     if (t.closest('#moveOpen')) return openMove();
     if (t.closest('#mv')) return; // 引っこしの画面の中のボタンは、それぞれのリスナーで扱う
-    const st = t.closest('[data-start]'); if (st) return start(+st.dataset.start);
+    const st = t.closest('[data-start]'); if (st) return start(deckOf(st.dataset.start));
     const op = t.closest('.opt'); if (op) return choose(op.dataset.k);
     const og = t.closest('#pitch .og'); if (og && !S.done) return choose(og.dataset.k);
     const tb = t.closest('.tab'); if (tb) return setTab(tb.dataset.tab);
@@ -565,8 +637,8 @@
     if (id === 'back' || id === 'toHome') return home();
     if (id === 'next') return next();
     if (id === 'replay') return play(cur());
-    if (id === 'retry') return start(S.lv);
-    if (id === 'nextLv') return start(S.lv + 1);
+    if (id === 'retry') return start(S.deck.live ? liveDeck() || S.deck : S.deck);
+    if (id === 'nextLv') return start(nextDeck(S.deck));
     if (id === 'hintBtn') {
       const h = document.getElementById('hint'); h.hidden = !h.hidden;
       btn.setAttribute('aria-pressed', String(!h.hidden));

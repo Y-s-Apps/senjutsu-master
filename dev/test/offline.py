@@ -46,7 +46,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 APP = """async () => { await document.fonts.ready; return {
-  app: document.querySelectorAll('.lv').length === 3,
+  app: ['basic', 'team', 'coach', 'club'].every(id => document.querySelector(`[data-start="${id}"]`)),
   font: [...document.fonts].some(f => f.family.includes('TM Gothic') && f.status === 'loaded'),
   text: document.body.innerText.slice(0, 40) }; }"""
 
