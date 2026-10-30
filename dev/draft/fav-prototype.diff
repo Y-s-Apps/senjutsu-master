@@ -9,12 +9,17 @@
    const REC = [...LV, CLUB]; // 自己ベストと出題の履歴を残すもの（id は記録の引っこしのコードにも使う）
    LV.forEach(L => { L.short = `Lv.${L.no} ${L.name}`; }); // 問題画面の上の表示
    const mvName = D => D.mv || D.name; // 記録の引っこしでの呼び名（初級・中級・上級・名将）
-@@ -150,7 +152,7 @@
-       const id = t + n, me = s.me === id;
-       g += `<g class="pl t-${t}${n === 1 ? ' gk' : ''}${me ? ' me' : ''}" data-id="${id}" style="transform:translate(${x}px,${y}px)">` +
+@@ -147,10 +149,10 @@
+   function players(s) {
+     let g = '';
+     const add = (t, [n, x, y]) => {
+-      const id = t + n, me = s.me === id;
+-      g += `<g class="pl t-${t}${n === 1 ? ' gk' : ''}${me ? ' me' : ''}" data-id="${id}" style="transform:translate(${x}px,${y}px)">` +
++      const id = t + n, me = s.me === id, gk = n === 1 || (s.gk || []).includes(id); // GK の見た目: 1番と、gk に書いた選手
++      g += `<g class="pl t-${t}${gk ? ' gk' : ''}${me ? ' me' : ''}" data-id="${id}" style="transform:translate(${x}px,${y}px)">` +
          (me ? '<circle class="me-ring" r="3.2"/>' : '') +
 -        `<circle class="mag" r="2"/><text class="num" y=".74">${n}</text>` +
-+        `<circle class="mag" r="2"/>${t === 'h' && n !== 1 && S.deck && S.deck.fav ? '<circle class="rin" r="1.48"/><circle class="rw" r="2"/><circle class="rr" r="2"/>' : ''}<text class="num" y=".74">${n}</text>` +
++        `<circle class="mag" r="2"/>${t === 'h' && !gk && S.deck && S.deck.fav ? '<circle class="rin" r="1.48"/><circle class="rw" r="2"/><circle class="rr" r="2"/>' : ''}<text class="num" y=".74">${n}</text>` +
          (me ? '<text class="me-lb" y="-3.9">あなた</text>' : '') + '</g>';
      };
      s.a.forEach(p => add('a', p));
@@ -128,7 +133,15 @@
  const L = window.LEVELS, CLUB = window.CLUB, TM = window.TM;
  let errors = 0;
  const err = (...a) => { errors++; console.log('ERROR', ...a); };
-@@ -165,6 +166,12 @@
+@@ -71,6 +72,7 @@
+   const best = q.opts.filter(o => o.sc === 2);
+   if (best.length !== 1) err(tag, 'sc:2（ベスト）はちょうど1つ', best.length);
+   if (q.me && !ids.has(q.me)) err(tag, 'me の選手がいない', q.me);
++  if (q.gk != null && (!Array.isArray(q.gk) || !q.gk.every(id => typeof id === 'string' && ids.has(id)))) err(tag, 'gk は選手の id（h31 など）の配列', q.gk);
+   const [vx, vy, vw, vh] = q.view;
+   const inV = p => p[0] >= vx && p[0] <= vx + vw && p[1] >= vy && p[1] <= vy + vh;
+   [...q.h, ...q.a].forEach(p => { if (!inV([p[1], p[2]])) err(tag, 'ボードの外の選手', p); });
+@@ -165,6 +167,12 @@
    });
  });
  
