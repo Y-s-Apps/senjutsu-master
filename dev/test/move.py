@@ -6,7 +6,8 @@
 - 読み込みは「高いレベルだけ更新」で、記録が下がらない
 - 途中で切れた・書き換えたコード、別のファイル、大きすぎるファイルは読まず、記録も変えない
 - 範囲外の値（満点より大きい・知らないレベル）は捨てる
-- 名将の戦術（club）の記録も、レベルと同じように移せる
+- 名将の戦術（club）とお気に入りクラブ（kashima など）の記録も、レベルと同じように移せる
+- ホームのお気に入りクラブのカードに、選んだクラブの自己ベストが出る
 - HTML を仕込んだファイルを選んでも、画面に差し込まれず、実行もされない
 - 外部への通信・CSP 違反・JS エラーがない
 必要なもの: pip install playwright && playwright install chromium
@@ -133,6 +134,12 @@ with sync_playwright() as p:
     msg = take_code(pg, signed('club=9'))
     ok('名将の戦術の記録も移せる', stored(pg) == {**before, 'club': 9} and '名将 —→9' in msg, (stored(pg), msg))
     before = stored(pg)
+    # お気に入りクラブの記録（クラブの id をそのまま使う）。いまの記録には、記録のあるクラブだけが出る
+    msg = take_code(pg, signed('nagoya=12,urawa=7,kashima=13'))
+    now = pg.inner_text('#mvNow')
+    ok('お気に入りクラブの記録も移せる（範囲外は捨てる）', stored(pg) == {**before, 'nagoya': 12, 'urawa': 7} and '名古屋チェントロ —→12' in msg and '鹿嶋マレア' not in msg, (stored(pg), msg))
+    ok('いまの記録は、記録のあるクラブだけ', '名古屋チェントロ 12/12' in now and '浦和ロカンダ 7/12' in now and '鹿嶋マレア' not in now, now)
+    before = stored(pg)
 
     # 5) 仕込んだファイル・大きなファイル
     evil = TMP / 'evil.txt'
@@ -145,7 +152,19 @@ with sync_playwright() as p:
     msg = take_file(pg, big)
     ok('大きすぎるファイルは読まない', stored(pg) == before and '大きすぎ' in msg, msg)
 
-    # 6) 記録がないときは持ち出せない
+    # 6) クラブの記録の持ち出しと、ホームのカード（選んだクラブの自己ベスト）
+    ctx.close()
+    ctx, pg = page(b, {'basic': 5, 'hiroshima': 10, 'chiba': 8})
+    pg.evaluate("() => localStorage.setItem('senjutsu-master-fav-v1', 'hiroshima')")
+    pg.reload()
+    card = pg.inner_text('.lv-fav').replace('\n', '')
+    ok('ホームのカードに選んだクラブの自己ベスト', '広島アチェロ' in card and '10/12' in card, card)
+    pg.click('#moveOpen')
+    code2 = pg.input_value('#mvOut')
+    ok('クラブの記録もコードに入る（北から順）', code2.startswith('SENJUTSU1:basic=5,chiba=8,hiroshima=10:'), code2)
+    pg.keyboard.press('Escape')
+
+    # 7) 記録がないときは持ち出せない
     ctx.close()
     ctx, pg = page(b)
     pg.click('#moveOpen')

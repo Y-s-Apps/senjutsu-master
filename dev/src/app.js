@@ -3,9 +3,12 @@
   const TM = window.TM; // logic.js（問題の選び方・選択肢の並べ替え・前節の決め方）
   const LV = window.LEVELS;
   const CLUB = window.CLUB;
-  const REC = [...LV, CLUB]; // 自己ベストと出題の履歴を残すもの（id は記録の引っこしのコードにも使う）
+  const FAV = window.FAV; // お気に入りクラブ（data5.js）: 架空のクラブ名で、実在のクラブの名場面と戦い方
+  // お気に入りクラブのデッキ。id はクラブの id（kashima など英小文字）を、自己ベスト・履歴・記録の引っこしのコードにそのまま使う
+  const FAVD = FAV ? FAV.clubs.map(c => ({ id: c.id, fav: true, club: c, short: c.name, name: FAV.name, title: c.name, mv: c.name, q: c.q })) : [];
+  const REC = [...LV, CLUB, ...FAVD]; // 自己ベストと出題の履歴を残すもの（id は記録の引っこしのコードにも使う）
   LV.forEach(L => { L.short = `Lv.${L.no} ${L.name}`; }); // 問題画面の上の表示
-  const mvName = D => D.mv || D.name; // 記録の引っこしでの呼び名（初級・中級・上級・名将）
+  const mvName = D => D.mv || D.name; // 記録の引っこしでの呼び名（初級・中級・上級・名将・クラブ名）
   const app = document.getElementById('app');
   const PH = { atk: '攻撃', def: '守備', tr: '切り替え', set: 'セットプレー', coach: '指導場面' };
   const LVN = ['', '初級', '中級', '上級'];
@@ -15,7 +18,7 @@
   const KEY = 'tacdrill-best-v1';
   const HKEY = 'senjutsu-master-recent-v1'; // 直近に出した問題（同じ問題が続けて出ないように）
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // deck: いま遊んでいるもの（レベル・名将の戦術・前節の一戦）、qs: 今回出す問題（選択肢は並べ替え済み）
+  // deck: いま遊んでいるもの（レベル・名将の戦術・前節の一戦・お気に入りクラブ）、qs: 今回出す問題（選択肢は並べ替え済み）
   const S = { deck: null, qs: [], qi: 0, ans: [], done: false, timers: [], screen: 'home' };
 
   // 線のアイコン（16×16、線の幅はすべて CSS の .i で同じにする）
@@ -147,10 +150,10 @@
   function players(s) {
     let g = '';
     const add = (t, [n, x, y]) => {
-      const id = t + n, me = s.me === id;
-      g += `<g class="pl t-${t}${n === 1 ? ' gk' : ''}${me ? ' me' : ''}" data-id="${id}" style="transform:translate(${x}px,${y}px)">` +
+      const id = t + n, me = s.me === id, gk = n === 1 || (s.gk || []).includes(id); // GK の見た目: 1番と、gk に書いた選手
+      g += `<g class="pl t-${t}${gk ? ' gk' : ''}${me ? ' me' : ''}" data-id="${id}" style="transform:translate(${x}px,${y}px)">` +
         (me ? '<circle class="me-ring" r="3.2"/>' : '') +
-        `<circle class="mag" r="2"/><text class="num" y=".74">${n}</text>` +
+        `<circle class="mag" r="2"/>${t === 'h' && S.deck && S.deck.fav ? '<circle class="rr" r="2.38"/>' : ''}<text class="num" y=".74">${n}</text>` +
         (me ? '<text class="me-lb" y="-3.9">あなた</text>' : '') + '</g>';
     };
     s.a.forEach(p => add('a', p));
@@ -162,7 +165,7 @@
 
   function pitchSVG(s) {
     const v = s.view;
-    const label = `${PH[s.ph]}の場面。青が味方、赤が相手。味方は上に向かって攻めている。`;
+    const label = `${PH[s.ph]}の場面。${S.deck && S.deck.fav ? 'クラブの色が味方、灰色が相手' : '青が味方、赤が相手'}。味方は上に向かって攻めている。`;
     return `<svg id="pitch" viewBox="${v.join(' ')}" role="img" aria-label="${label}">
       ${field()}${s.lanes ? lanes(v) : ''}${s.line ? offside(s.line) : ''}
       <g class="opts-g">${s.opts.map(optG).join('')}</g>
@@ -207,9 +210,10 @@
   const NO_START = /^[をにがはのへてゃゅょぁぃぅぇぉっァィゥェォッャュョー、。・）」』，．：！？]/;
   // 閉じ括弧の直後はブラウザが keep-all でも折るので、文節の中では WORD JOINER（U+2060）でつなぐ。
   const phrases = text => window.BudouX.parse(text).reduce((a, p) => {
-    if (a.length && NO_START.test(p)) a[a.length - 1] += p; else a.push(p);
+    // 「3-0」「4-4-2」は数字とハイフンの間で折らない（文節をつなぎ、ハイフンの後を WORD JOINER でつなぐ）
+    if (a.length && (NO_START.test(p) || (/\d-$/.test(a[a.length - 1]) && /^\d/.test(p)))) a[a.length - 1] += p; else a.push(p);
     return a;
-  }, []).map(p => p.replace(/([）」』)])(?=.)/g, '$1⁠'));
+  }, []).map(p => p.replace(/([）」』)])(?=.)/g, '$1⁠').replace(/(\d-)(?=\d)/g, '$1⁠'));
   function phrase(root) {
     if (!root || !window.BudouX) return;
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -270,6 +274,55 @@
     return { id: 'live', live: true, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
   }
 
+  // お気に入りクラブ: 選んだクラブを覚える（localStorage）。ほかのページからも書き換えられるので、知っている id だけを使う
+  const FAV_KEY = 'senjutsu-master-fav-v1';
+  const loadFav = () => { let v = null; try { v = localStorage.getItem(FAV_KEY); } catch (e) { /* 読めなければ未設定 */ } return FAVD.find(D => D.id === v) || null; };
+  const saveFav = id => { try { localStorage.setItem(FAV_KEY, id); } catch (e) { /* 保存できなくても遊べる */ } };
+  const clubMag = (c, cls = 'cmag') => `<svg class="${cls}" viewBox="-3 -3 6 6" aria-hidden="true" style="--c:${esc(c.color.home)};--r:${esc(c.color.rim)}"><circle class="cm-r" r="2.45"/><circle class="cm" r="2"/></svg>`;
+  // クラブ名を「地名」と「モチーフ」の2行に分けて見せる（幅の狭いタイルでも、折り返して収める）
+  const clubName = c => { const m = c.name.match(/^(\p{Script=Han}+)(.+)$/u); return m ? `<span class="pk-place">${esc(m[1])}</span><span class="pk-name">${esc(m[2])}</span>` : `<span class="pk-name">${esc(c.name)}</span>`; };
+  // ホームのカード: 未設定なら「クラブを選ぶ」、設定後はそのクラブ（押すと遊ぶ）と、別のボタンの「変える」
+  function favCard(best) {
+    if (!FAVD.length) return '';
+    const D = loadFav();
+    if (!D) return `<button class="lv" data-pick="1" aria-label="お気に入りクラブを選ぶ">
+      <span class="lv-head"><span class="ico" aria-hidden="true"><i class="club-dot none"></i></span><span class="lv-name">お気に入り</span><span class="lv-title">クラブを選ぶ</span><span class="lv-best"><b>${FAVD.length}</b>クラブ</span></span>
+      <span class="lv-who"><span class="lv-w">名場面と戦い方、クラブ名は架空</span></span>
+    </button>`;
+    const b = best[D.id], c = D.club;
+    return `<div class="lv-fav"><button class="lv" data-start="${esc(D.id)}" aria-label="お気に入りクラブ ${esc(D.title)}">
+      <span class="lv-head"><span class="ico" aria-hidden="true"><i class="club-dot" style="--c:${esc(c.color.home)};--r:${esc(c.color.rim)}"></i></span><span class="lv-name">お気に入り</span><span class="lv-title">${esc(D.title)}</span><span class="lv-best"><small>最高</small><b>${b == null ? '—' : esc(b)}</b>/${maxOf(D)}</span></span>
+      <span class="lv-who"><span class="lv-w">名場面と戦い方、クラブ名は架空</span></span>
+    </button><button class="link lv-chg" data-pick="1" aria-label="お気に入りクラブを変える">変える</button></div>`;
+  }
+  // クラブを選ぶ画面: 北から順に3×3。選ぶと覚えて、すぐに遊び始める
+  function favPick() {
+    S.screen = 'pick'; clearTimers();
+    const cur = loadFav(), best = loadBest();
+    app.innerHTML = `
+    <div class="screen pick">
+      <nav class="bar"><button class="link back" id="back" aria-label="ホームへ戻る">${icon('back')}</button><span class="bar-lv">お気に入りクラブ</span></nav>
+      <div class="pk-body">
+        <header class="pk-top">
+          <h2>応援しているクラブは？</h2>
+          <p class="pk-lead">選んだクラブは、ホームから続けて遊べます。名場面と、そのクラブらしい戦い方の${TM.SESSION}問。</p>
+        </header>
+        <ul class="pk-grid" aria-label="クラブ">
+          ${FAVD.map(D => `<li><button class="pk-club${D === cur ? ' on' : ''}" data-fav="${esc(D.id)}"${D === cur ? ' aria-current="true"' : ''} aria-label="${esc(D.title)}、最高 ${best[D.id] == null ? 'なし' : esc(best[D.id]) + '点'}">${clubMag(D.club)}${clubName(D.club)}<span class="pk-best"><b>${best[D.id] == null ? '—' : esc(best[D.id])}</b>/${maxOf(D)}</span></button></li>`).join('')}
+        </ul>
+        <div class="pk-foot">
+          <ul class="key pk-key" aria-label="ボードの見方">
+            <li>${clubMag((cur || FAVD[0]).club, 'cmag sm')}クラブの色が味方</li>
+            <li><svg viewBox="-3 -3 6 6" aria-hidden="true"><circle r="2.4" class="k-gray"/></svg>灰色が相手</li>
+          </ul>
+          <p class="pk-note">クラブ名・選手は架空です。場面と背番号は、実際の試合の記録をもとにしています。</p>
+        </div>
+      </div>
+    </div>`;
+    phrase(app);
+    const on = app.querySelector('.pk-club.on') || app.querySelector('.pk-club'); if (on) on.focus({ preventScroll: true });
+  }
+
   function home() {
     S.screen = 'home'; clearTimers();
     const best = loadBest();
@@ -295,7 +348,7 @@
       </div>
       <nav class="levels" aria-label="遊ぶものを選ぶ">
         <div class="grp">${LV.map(L => card(L, `<span class="pips" aria-hidden="true">${pips(L.no)}</span>`, L.name, best)).join('')}</div>
-        <div class="grp">${card(CLUB, CLUB_ICON, CLUB.name, best)}${liveCard()}</div>
+        <div class="grp">${card(CLUB, CLUB_ICON, CLUB.name, best)}${liveCard()}${favCard(best)}</div>
       </nav>
     </div>`;
     phrase(app);
@@ -314,7 +367,7 @@
     const D = S.deck, s = cur(), v = s.view;
     seen(D, s.id);
     app.innerHTML = `
-    <div class="screen play" data-qid="${esc(s.id)}">
+    <div class="screen play${D.fav ? ' club' : ''}" data-qid="${esc(s.id)}"${D.fav ? ` style="--home:${esc(D.club.color.home)};--away:${esc(D.club.color.away)};--rim:${esc(D.club.color.rim)}"` : ''}>
       <nav class="bar">
         <button class="link back" id="back" aria-label="ホームへ戻る">${icon('back')}</button>
         <span class="bar-lv">${esc(D.short)}</span>
@@ -479,7 +532,7 @@
         }).join('')}
       </ol>
       <div class="acts">
-        <button class="btn ghost" id="retry">${D.live ? 'もう一度' : '別の問題で'}</button>
+        <button class="btn ghost" id="retry">${D.live || D.fav ? 'もう一度' : '別の問題で'}</button>
         ${nx ? `<button class="btn" id="nextLv">${esc(nx === CLUB ? nx.title : nx.short)}へ${icon('next')}</button>` : ''}
         <button class="btn ghost" id="toHome">ホームへ</button>
       </div>
@@ -537,7 +590,8 @@
     big: '大きすぎて読めませんでした。戦術マスターで保存したファイルを選んでください。',
     nodata: '読み込める記録が入っていませんでした。'
   };
-  const bestLine = best => REC.map(D => `${mvName(D)} ${best[D.id] == null ? '—' : best[D.id]}/${maxOf(D)}`).join('・');
+  // いまの記録: レベル3つと名将の戦術はいつも、お気に入りクラブは記録のあるクラブだけ
+  const bestLine = best => REC.filter(D => !D.fav || best[D.id] != null).map(D => `${mvName(D)} ${best[D.id] == null ? '—' : best[D.id]}/${maxOf(D)}`).join('・');
 
   async function saveFile(text) {
     // アーティファクトではホストの保存確認（downloads）、ホーム画面のアプリ・Safari では共有シート（「ファイル」に保存）、どちらもなければ通常のダウンロード
@@ -638,6 +692,8 @@
     const t = e.target;
     if (t.closest('#moveOpen')) return openMove();
     if (t.closest('#mv')) return; // 引っこしの画面の中のボタンは、それぞれのリスナーで扱う
+    if (t.closest('[data-pick]')) return favPick();
+    const fv = t.closest('[data-fav]'); if (fv) { saveFav(fv.dataset.fav); return start(deckOf(fv.dataset.fav)); }
     const st = t.closest('[data-start]'); if (st) return start(deckOf(st.dataset.start));
     const op = t.closest('.opt'); if (op) return choose(op.dataset.k);
     const og = t.closest('#pitch .og'); if (og && !S.done) return choose(og.dataset.k);

@@ -18,7 +18,7 @@ const SRC = path.join(__dirname, 'src');
 // JSON の中の "<" は \u003c にして、文の中身で </script> が閉じられないようにする。
 const LIVE_JS = () => `window.LIVE = ${JSON.stringify(live.load()).replace(/</g, '\\u003c')};`;
 const read = f => (f === 'live.js' ? LIVE_JS() : fs.readFileSync(path.join(SRC, f), 'utf8'));
-const DATA_FILES = ['data1.js', 'data2.js', 'data3.js', 'data4.js'];
+const DATA_FILES = ['data1.js', 'data2.js', 'data3.js', 'data4.js', 'data5.js'];
 
 // 0) フォントの文字: ソースに出てくる文字（budoux.js は辞書なので除く）と ASCII。
 //    fonts/ のサブセットに足りない文字があれば止める（make_fonts.py で作り直す）。

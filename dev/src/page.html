@@ -22,6 +22,8 @@
   --frame: #2A2A2A; --frame-line: #363636;
   --grass: #1E2220; --chalk: rgba(242, 242, 236, .74);
   --home: #4C7DFF; --away: #EF5547; --pen: #FFD43B; --pen-ink: #15130A;
+  /* お気に入りクラブ: 味方のマグネットの内側の縁と、相手の灰色（クラブカラーはデータの color から） */
+  --rim-in: #FFFFFF; --fav-away: #8C8C8C;
   --p-good: #8DF0B6; --p-bad: #FF8E80; --hl: rgba(245, 207, 77, .28);
   --f-brand: "TM Display", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
   --f-disp: "TM Gothic", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
@@ -103,6 +105,38 @@ button { font: inherit; color: inherit; }
 .lv:disabled:hover { background: none; }
 /* 名将の戦術（作戦ボードの線アイコン）と前節の一戦（色の点）。レベルの「●●○」と同じ幅 */
 .ico { flex: none; width: 24px; display: flex; align-items: center; color: var(--muted); }
+.ico .club-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 2px solid var(--r); }
+.ico .club-dot.none { background: none; border: 1.5px dashed var(--muted); }
+/* お気に入りクラブ: ホームのカードの「変える」と、クラブを選ぶ画面 */
+.lv-fav { position: relative; border-top: 1px solid var(--line); }
+.lv-fav .lv { border-top: 0; }
+.lv-fav .lv-who { padding-right: 48px; }
+.lv-chg { position: absolute; right: 6px; bottom: 4px; font-size: 12px; padding: 6px 8px; }
+.pick { gap: 12px; }
+.pk-body { flex: 1; min-height: 0; width: 100%; max-width: 560px; margin-inline: auto; display: flex; flex-direction: column; justify-content: center; gap: clamp(14px, 3vh, 24px); }
+.pk-top h2 { font: var(--w-disp) 22px/1.35 var(--f-disp); margin-bottom: 6px; text-wrap: balance; }
+.pk-lead { color: var(--muted); font-size: 13.5px; line-height: 1.6; text-wrap: pretty; }
+.pk-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pk-club { appearance: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 4px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; transition: background-color .15s, border-color .15s; }
+.pk-club:hover { background: var(--raise); }
+.pk-club.on { border-color: var(--pen); }
+.cmag { width: 34px; height: 34px; margin-bottom: 2px; }
+.cmag.sm { width: 14px; height: 14px; margin: 0; }
+.cmag .cm { fill: var(--c); stroke: var(--rim-in); stroke-width: .34; }
+.cmag .cm-r { fill: none; stroke: var(--r); stroke-width: .5; }
+.pk-place { font-size: 11px; color: var(--muted); line-height: 1.3; white-space: nowrap; }
+.pk-name { font-size: 14px; font-weight: var(--w-bold); line-height: 1.3; white-space: nowrap; }
+.pk-best { font: 500 11px var(--f-mono); color: var(--faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pk-best b { font-weight: 600; color: var(--ink); }
+.pk-foot { display: flex; flex-direction: column; gap: 8px; }
+.pk-key { grid-template-columns: repeat(2, max-content); }
+.k-gray { fill: var(--fav-away); }
+.pk-note { font-size: 12px; color: var(--muted); line-height: 1.6; }
+@media (max-width: 380px) { .pk-name { font-size: 13px; } }
+/* お気に入りクラブのボード: 味方はクラブカラーの地に「白と縁の色の二重の縁」、GK は今の GK の見た目、相手は灰色（データの color） */
+.club .t-h:not(.gk) .mag { stroke: var(--rim-in); stroke-width: .34; }
+.rr { display: none; }
+.club .t-h:not(.gk) .rr { display: inline; fill: none; stroke: var(--rim); stroke-width: .42; }
 .ico.live i { width: 7px; height: 7px; margin-left: 1px; border-radius: 50%; background: var(--good); }
 
 /* 記録の引っこし（ホームの上に重ねる。スクロールさせずに1画面に収める） */
@@ -299,6 +333,7 @@ button { font: inherit; color: inherit; }
 <script src="data2.js"></script>
 <script src="data3.js"></script>
 <script src="data4.js"></script>
+<script src="data5.js"></script>
 <script src="live.js"></script>
 <script src="logic.js"></script>
 <script src="budoux.js"></script>

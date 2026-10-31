@@ -1,7 +1,8 @@
 """1画面に収まっているかの確認:  python3 dev/test/fit.py [--shots]
 
 ビルド済みの index.html をローカルの Web サーバーから開き（fonts/ の実フォントで測る）、
-レベル3つと「名将の戦術」を、全問が出るまで続けて遊ぶ。「前節の一戦」は、問題のある節ごとに日時を合わせて遊ぶ。
+レベル3つと「名将の戦術」を、全問が出るまで続けて遊ぶ。「お気に入りクラブ」は、選ぶ画面から9クラブを順に選んで1回ずつ遊ぶ。
+「前節の一戦」は、問題のある節ごとに日時を合わせて遊ぶ。
 全問について、回答前のパネルと、回答後の全タブの中身を確かめる。
 - ページ全体がスクロールする            → 失敗
 - 回答前のパネルがはみ出す              → 失敗
@@ -13,7 +14,8 @@
 - CSP に止められたものがある            → 失敗
 - fonts/ のフォントが読み込めない       → 失敗
 - 「記録の引っこし」が画面からはみ出す・Esc で閉じない → 失敗（記録なし・ありの両方）
-- 出題の履歴（localStorage）に壊れた値が入っていると動かない → 失敗
+- 出題の履歴・お気に入りクラブ（localStorage）に壊れた値が入っていると動かない → 失敗
+- お気に入りクラブ: 選ぶ画面がはみ出す、選んだクラブがホームのカードに出ない、1回で6問が出ない、自己ベストが残らない → 失敗
 --shots を付けると dev/test/shots/ にスクリーンショットを保存する。
 必要なもの: pip install playwright && playwright install chromium
 """
@@ -64,7 +66,8 @@ BREAKS = r"""() => {
     for (let i = 0; i < n.length; i++) {
       r.setStart(n, i); r.setEnd(n, i + 1);
       const b = r.getBoundingClientRect(); if (!b.width) continue;
-      if (prev && prev.block === block && b.top > prev.top + 4 && BAD.test(n.data[i]))
+      // 「3-0」の「0」のように、ハイフンの後の数字が行頭に来るのも折れている
+      if (prev && prev.block === block && b.top > prev.top + 4 && (BAD.test(n.data[i]) || (/\d/.test(n.data[i]) && /-\u2060?$/.test(prev.text))))
         out.push((prev.text + '|' + n.data.slice(i, i + 6)).trim());
       prev = { block, top: b.top, text: (prev && prev.block === block ? prev.text : '').slice(-6) + n.data[i] };
     }
@@ -173,11 +176,45 @@ def play_deck(pg, tag, deck, strict, checked, shots=()):
     pg.click('#toHome')
 
 
+def play_fav(pg, tag, strict, checked):
+    """お気に入りクラブ: 選ぶ画面から9クラブを順に選んで1回ずつ遊ぶ。ホームのカード・自己ベスト・選ぶ画面を確かめる"""
+    clubs = pg.evaluate("() => window.FAV.clubs.map(c => ({ id: c.id, name: c.name, ids: c.q.map(q => q.id) }))")
+    card = pg.inner_text('.levels')
+    if 'クラブを選ぶ' not in card:
+        fails.append((tag, 'fav', '未設定（壊れた値）のときに「クラブを選ぶ」が出ない'))
+    pg.click('[data-pick]')
+    for i, c in enumerate(clubs):
+        r = pg.evaluate(OV)
+        if r['page'] > 0:
+            fails.append((tag, 'fav pick', r))
+        bad_breaks.update((tag, x) for x in pg.evaluate(BREAKS))
+        if i in (0, 1):
+            shot(pg, f'{tag}-fav-pick' + ('' if i == 0 else '-set'))
+        pg.click(f'[data-fav="{c["id"]}"]')
+        ids = session(pg, tag, c['id'], strict, checked, ('question',) if i == 0 else ())
+        if sorted(ids) != sorted(c['ids'][:6]):
+            fails.append((tag, c['id'], '1回で6問が出ない', ids))
+        pg.click('#toHome')
+        head = pg.inner_text('.lv-fav')
+        best = pg.evaluate("id => (JSON.parse(localStorage.getItem('tacdrill-best-v1')) || {})[id]", c['id'])
+        if c['name'] not in head or best is None or f'{best}/12' not in head.replace('\n', ''):
+            fails.append((tag, c['id'], 'ホームのカードにクラブ名・自己ベストが出ない', head, best))
+        if i == 0:
+            r = pg.evaluate(OV)
+            if r['page'] > 0:
+                fails.append((tag, 'home fav', r))
+            bad_breaks.update((tag, x) for x in pg.evaluate(BREAKS))
+            shot(pg, f'{tag}-home-fav')
+        if i < len(clubs) - 1:
+            pg.click('.lv-chg')
+
+
 def run(pg, tag, strict):
     pg.clock.set_fixed_time(TODAY)
     pg.goto(BASE + 'index.html')
     # 出題の履歴は同じドメインのほかのページからも書き換えられる。壊れた値が入っていても動くこと（知らない id は無視される）
     pg.evaluate("() => localStorage.setItem('senjutsu-master-recent-v1', JSON.stringify({ basic: ['<img src=x onerror=alert(1)>', 5, null], club: 'x', team: {} }))")
+    pg.evaluate("() => localStorage.setItem('senjutsu-master-fav-v1', '<img src=x onerror=alert(1)>')")
     pg.reload()
     loaded.update(pg.evaluate(FONTS))
     r = pg.evaluate(OV)
@@ -190,6 +227,7 @@ def run(pg, tag, strict):
     for deck in DECKS:
         shots = ('question', 'result') if deck == 'basic' else ('question', 'feedback') if deck == 'coach' else ('question',) if deck == 'club' else ()
         play_deck(pg, tag, deck, strict, checked, shots)
+    play_fav(pg, tag, strict, checked)
     sheet(pg, tag, 'move')
     # 前節の一戦: 問題のある節ごとに、その節が終わった1時間後に合わせる
     for rd in pg.evaluate(ROUNDS):

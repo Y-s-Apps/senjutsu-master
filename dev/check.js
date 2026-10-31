@@ -2,12 +2,13 @@
 // 問題データの確認:  node dev/check.js
 // 誤り（ID の不一致・ベストが1つでない・ボードの外の座標・日程の形など）があれば終了コード 1。
 // 「close」「badge near」は目安の注意（重なって見えるかもしれない）で、失敗にはしない。
-// 対象: レベル（data1〜3.js）・名将の戦術（data4.js）・前節の一戦（dev/src/live/ の JSON）
+// 対象: レベル（data1〜3.js）・名将の戦術（data4.js）・お気に入りクラブ（data5.js）・前節の一戦（dev/src/live/ の JSON）
 'use strict';
 const path = require('path');
 global.window = {};
-for (const f of ['data1.js', 'data2.js', 'data3.js', 'data4.js', 'logic.js']) require(path.join(__dirname, 'src', f));
+for (const f of ['data1.js', 'data2.js', 'data3.js', 'data4.js', 'data5.js', 'logic.js']) require(path.join(__dirname, 'src', f));
 const LIVE = require('./livedata').load();
+const FAV = window.FAV;
 const L = window.LEVELS, CLUB = window.CLUB, TM = window.TM;
 let errors = 0;
 const err = (...a) => { errors++; console.log('ERROR', ...a); };
@@ -71,6 +72,7 @@ function checkQ(q, tag, opt = {}) {
   const best = q.opts.filter(o => o.sc === 2);
   if (best.length !== 1) err(tag, 'sc:2（ベスト）はちょうど1つ', best.length);
   if (q.me && !ids.has(q.me)) err(tag, 'me の選手がいない', q.me);
+  if (q.gk != null && (!Array.isArray(q.gk) || !q.gk.every(id => typeof id === 'string' && ids.has(id)))) err(tag, 'gk は選手の id（h31 など）の配列', q.gk);
   const [vx, vy, vw, vh] = q.view;
   const inV = p => p[0] >= vx && p[0] <= vx + vw && p[1] >= vy && p[1] <= vy + vh;
   [...q.h, ...q.a].forEach(p => { if (!inV([p[1], p[2]])) err(tag, 'ボードの外の選手', p); });
@@ -165,6 +167,25 @@ LIVE.forEach(lg => {
   });
 });
 
+// お気に入りクラブ（data5.js）: クラブの id は自己ベスト・履歴・記録の引っこしのコード（英小文字だけ）にそのまま使うので、
+// 英小文字だけで、ほかのデッキの id と重ならないこと。名前・モチーフ・色（#RRGGBB）、問題は lv・tag（年・節）・ctx（その試合の文脈）が必要
+if (!FAV || !Array.isArray(FAV.clubs) || !FAV.clubs.length || !str(FAV.name)) err('FAV', 'data5.js の window.FAV（name と clubs）がない');
+else {
+  const used = new Set([...L.map(l => l.id), CLUB && CLUB.id, 'live']);
+  FAV.clubs.forEach(c => {
+    const t = `FAV ${c.id}`;
+    if (!/^[a-z]+$/.test(c.id || '') || used.has(c.id)) err(t, 'クラブの id は英小文字だけで、ほかのデッキと重ならない', c.id);
+    used.add(c.id);
+    if (!str(c.name) || !str(c.motif)) err(t, 'name と motif が必要');
+    if (str(c.name) && !/^\p{Script=Han}+\S+$/u.test(c.name)) err(t, 'name は「地名（漢字）＋モチーフ」の形（選ぶ画面で2行に分ける）', c.name);
+    if (!c.color || !['home', 'rim', 'away'].every(k => /^#[0-9A-Fa-f]{6}$/.test(c.color[k] || ''))) err(t, 'color の home・rim・away は #RRGGBB');
+    for (const k of Object.keys(c)) if (!['id', 'name', 'motif', 'color', 'q'].includes(k)) err(t, '知らない項目', k);
+    if (!Array.isArray(c.q) || c.q.length < TM.SESSION) err(t, `問題は ${TM.SESSION} 問以上`, c.q && c.q.length);
+    (c.q || []).forEach((q, qi) => checkQ(q, `${t} Q${qi + 1}(${q.id})`, { lv: true, ctx: true }));
+    const phs = new Set((c.q || []).map(q => q.ph));
+    if (phs.size < 3) err(t, '場面（攻撃・守備…）が3種類以上あること', [...phs].join(','));
+  });
+}
 const liveQ = LIVE.reduce((n, lg) => n + lg.seasons.reduce((m, se) => m + Object.values(se.rounds).reduce((k, r) => k + r.q.length, 0), 0), 0);
-console.log(`levels ${L.length} · questions ${L.map(l => l.q.length).join('/')} · club ${CLUB ? CLUB.q.length : 0} · live ${liveQ} · errors ${errors}`);
+console.log(`levels ${L.length} · questions ${L.map(l => l.q.length).join('/')} · club ${CLUB ? CLUB.q.length : 0} · fav ${FAV ? `${FAV.clubs.length}×${FAV.clubs.map(c => c.q.length).join('/')}` : 0} · live ${liveQ} · errors ${errors}`);
 process.exit(errors ? 1 : 0);
