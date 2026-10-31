@@ -22,6 +22,7 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - `dev/test/fit.py` — Playwright でローカルの Web サーバーから開き（`fonts/` の実フォントで測る）、レベルと名将の戦術は全問が出るまで続けて遊び、お気に入りクラブは選ぶ画面から9クラブを順に選んで遊び（ホームのカード・自己ベストも確かめる）、前節の一戦は問題のある節ごとに日時を合わせて遊ぶ。全問・全タブと選ぶ画面について、1画面に収まっているか（縦横どちらもスクロールなし）、行頭に助詞・句読点・閉じ括弧・ハイフンの後の数字が来ていないか、前回の問題が続けて出ないか、選択肢が並べ替えられているか、外部への通信・CSP 違反がないか、フォントが読み込めたかを確認（`--shots` でスクショ）。
 - `dev/test/move.py` — 「記録の引っこし」の確認。ファイル・コードでの持ち出しと読み込み（お気に入りクラブの記録も）、高いほうだけの更新、切れた・書き換えた・範囲外・HTML を仕込んだ・大きすぎるものを読まないこと。
 - `dev/test/offline.py` — サイトのコピーを `/senjutsu-master/` の位置で配信し、service worker を登録して、オフライン・別ページや 404 を開いたあと・サーバーの 500・新しい版への切り替えでも正しく動くかを確認。引数にフォルダを渡すと、そのビルドを試せる。
+- `dev/test/audit.py` — セキュリティ診断のうち機械的に確かめられるもの（下の「セキュリティ診断」）。読むだけで何も書き換えない。OK／NG／要確認／読めない で出し、NG があれば終了コード 1。
 - `fonts/` — アプリで使う文字だけを収めたフォント（woff2）。`dev/fonts/make_fonts.py` が google/fonts の決まったコミットから元のフォントを取り（SHA-256 を確認、`dev/fonts/.cache/` は git に入れない）、サブセットを作る。作った文字の一覧は `dev/fonts/chars.txt`。内部名は TM Display / TM Gothic / TM Mono（IBM Plex の予約フォント名「Plex」を使わないため）。手で編集しない。
 - `licenses/` — 同梱している BudouX（Apache-2.0）とフォント（OFL 1.1）のライセンス本文。アイコンの字形に使った Zen Old Mincho（OFL 1.1）も。
 - `dev/draft/` — 相談中の機能の下書きを置く場所（ビルドにも check.js にも入れない。いまはなし。お気に入りクラブは 2026-10-31 に本番へ入れた）。
@@ -29,7 +30,8 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 ## 変更の流れ
 1. `dev/src/` を編集
 2. `node dev/check.js` → `node dev/build.js` → 画面を変えたら `python3 dev/test/fit.py`、出題の仕組み（logic.js）や日程を変えたら `node dev/test/logic.js`、service worker（`build.js` の sw 部分）を変えたら `python3 dev/test/offline.py`、自己ベストや記録の引っこしを変えたら `python3 dev/test/move.py`
-3. コミットして `main` に push（Pages が1〜2分で更新）。アーティファクトも合わせるなら `dev/dist/artifact.html` を上記 URL へ publish。
+3. コミットの前に `python3 dev/test/audit.py`（数秒）。NG が出たら直す
+4. コミットして `main` に push（Pages が1〜2分で更新）。アーティファクトも合わせるなら `dev/dist/artifact.html` を上記 URL へ publish。
 - main には ruleset（`main`）があり、削除と強制 push を禁止している（pull request は不要なので、普通の push は通る）。秘密の値（トークン・鍵など）を含む push は push protection に止められる。push のたびに code scanning（CodeQL）が走る。
 - service worker はページ本体（`./` と `index.html`）をネット優先で取得するので、push 後は再読み込みで新しい版になる。保存するのは正常な応答（200）だけで、ネットが使えない・エラーのときは保存済みのページを出す。アイコン・フォントなど CORE のファイルは保存済み優先。それ以外（`licenses/` などの別ページ）には関わらず、保存もしない。新しい版が有効になると古い版の保存データ（`senjutsu-master-<版>`）を消す。
 - y-s-apps.github.io は組織 Y-s-Apps の Pages すべて（senjutsu-master・uchinoko-biyori・shinpan-dojo・kuratsuku・kamiashi）が共有する1つのオリジン。localStorage・IndexedDB・Cache Storage・service worker は、組織のほかの Pages（とくに `y-s-apps.github.io` という名前のリポジトリを作るとサイト全体の直下になる）からも触れる。保存キーとキャッシュ名はアプリ名で始め、ほかのアプリのものを消さない（2026-10-29 に5つとも確認済み）。ほかの人が書いたものを組織の Pages で公開しない。
@@ -109,3 +111,19 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - **外部へ通信しない**。フォントは `fonts/`、script はすべてインライン。`index.html` の CSP（`dev/build.js` が作る `<meta>`）は外部への通信をすべて禁止し、script は埋め込んだもののハッシュだけを許す。外部の URL を読み込むと、ビルドが止まり（page.html）、`fit.py` も失敗する。GitHub Pages はヘッダーを設定できないので、`frame-ancestors` などヘッダーでしか効かない指定は使えない。アーティファクトはホスト側の仕組みがあるので CSP を入れない。
 - **innerHTML に差し込む文は `esc()` を通す**（問題データ・自己ベストを含めてすべて）。座標・点数・記号 A/B/C はそのまま SVG や class に入るので、`dev/check.js` がデータの型（文は文字列、座標は数値、記号は A/B/C の順）を確かめる。HTML のタグを文に書かない。
 - コミットの末尾に付ける行は、そのセッションで指示されたものに従う。
+
+## セキュリティ診断
+修正・新機能のたびに行う（2026-11-01 のユーザーの指定）。依頼文は HANDOFF.md §1。項目は ①コード ②外部通信と依存 ③Service Worker ④公開物と個人情報 ⑤GitHub の設定 ⑥アーティファクト。これまでの結果は HANDOFF.md §4（「セキュリティ診断」で検索）。
+1. 対象を決める: 前回の診断の記録を足したコミット（`git log -1 --format=%h -G'セキュリティ診断' -- HANDOFF.md`）から HEAD まで。
+2. アーティファクトを Artifact の read で読み、見出しで公開範囲が「自分だけ」・capability が `downloads` だけかを見る。保存されたファイルを次に渡す。
+3. `python3 dev/test/audit.py --since <1のコミット> --artifact <2のファイル>`。NG は直す。「要確認」は人が読んで判断し、「読めない」はユーザーに確かめてもらう。
+4. テストをすべて流す: `node dev/check.js`・`node dev/test/logic.js`・`python3 dev/test/fit.py`・`python3 dev/test/move.py`・`python3 dev/test/offline.py`。
+5. 差分を読む（audit.py の代わりにならないところ）:
+   - ① 変わった script の、HTML を差し込む場所に入る値（`esc()` を通るか、数値・決まった文字列だけか）、style・class・SVG の属性に入る値（データなら check.js が型・形を確かめるか。色は `#RRGGBB`、id は英小文字）、新しい保存データ（キーはアプリ名で始め、読むときに知っている値だけ残す）、外から読み込むもの（記録の引っこしなど。大きさ・形を確かめてから使う）。
+   - ② 新しい依存（ライブラリ・フォント・画像）がないか。入れたら版を固定し、ライセンス本文を `licenses/` に。同梱の BudouX の新しい版に安全面の修正がないかをウェブで調べる。
+   - ③ `build.js` の sw の部分が変わったか（変わったら offline.py の場面が足りているか）。
+   - ④ 新しく公開するファイル・HANDOFF・CLAUDE.md・コミットメッセージに、個人のアカウント名・名前の候補・実在の個人の情報・秘密の値がないか。audit.py が探せるのは今のアカウント名（`gh api user`）だけなので、旧名を確かめたいときはユーザーに聞いて環境変数 `AUDIT_NAMES` で渡す（ファイルには書かない）。報告にも名前は書かず、件数だけにする。
+   - ⑤ 組織にリポジトリが増えていたら、そのリポジトリにも ruleset と Wiki・Projects のオフが要る（組織全体の ruleset は有料プランのみ）。
+6. ユーザーに確かめてもらう: https://github.com/Y-s-Apps/senjutsu-master/security の「Code scanning」が 0 Open か（この環境では code scanning・Dependabot の指摘、組織の設定、Pages の設定は API で読めない）。
+7. 直す: 1項目ずつ、直す → テスト → push → アーティファクト。履歴の書き換え・リポジトリの作り直し・公開範囲の変更など元に戻せないものは、選択肢を出してユーザーに決めてもらう。ブランチは作らない（このチャットの接続では消せない）。
+8. 報告は①〜⑥を1行ずつ短く。HANDOFF.md §4 に「日付: セキュリティ診断（対象 <1のコミット>..<HEAD>）」と結果を足して push し、「ナレッジの同期を押してください」を添える。
