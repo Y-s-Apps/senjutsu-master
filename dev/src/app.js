@@ -521,7 +521,7 @@
     app.innerHTML = `
     <div class="screen result">
       <div class="r-head">
-        <p class="eyebrow">${esc(D.short)} · ${esc(D.live ? D.name : D.title)}</p>
+        <p class="eyebrow">${esc(D.short)} · ${esc(D.live || D.fav ? D.name : D.title)}</p>
         <div class="score"><b>${sc}</b><span>/${mx}</span>${isNew ? '<em><i></i>自己ベスト</em>' : ''}</div>
         <p class="msg${D.live ? ' msg-live' : ''}">${esc(msg)}</p>
       </div>
@@ -592,7 +592,9 @@
     nodata: '読み込める記録が入っていませんでした。'
   };
   // いまの記録: レベル3つと名将の戦術はいつも、お気に入りクラブは記録のあるクラブだけ
-  const bestLine = best => REC.filter(D => !D.fav || best[D.id] != null).map(D => `${mvName(D)} ${best[D.id] == null ? '—' : best[D.id]}/${maxOf(D)}`).join('・');
+  // いまの記録: 1件ずつ途中で折り返さないようにする（「名将」と「7/12」が別の行に分かれないように）。クラブは記録のあるものだけ
+  const bestLine = best => `<span class="mv-l">いまの記録</span>` + REC.filter(D => !D.fav || best[D.id] != null)
+    .map(D => `<span class="mv-i">${esc(mvName(D))} <b>${best[D.id] == null ? '—' : esc(best[D.id])}</b>/${maxOf(D)}</span>`).join('');
 
   async function saveFile(text) {
     // アーティファクトではホストの保存確認（downloads）、ホーム画面のアプリ・Safari では共有シート（「ファイル」に保存）、どちらもなければ通常のダウンロード
@@ -616,9 +618,16 @@
       return 'saved';
     } catch (e) { return 'unavailable'; }
   }
+  // コードは入力欄ではなく文字で見せる（入力欄は 16px でないと iPhone で拡大されるため、長いコードが収まらない）。
+  // クリップボードに書けないときは、コードを選んだ状態にしてコピーを試す
   async function copyCode(el) {
-    try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(el.value); return 'copied'; } } catch (e) { /* 次の方法へ */ }
-    try { el.focus(); el.select(); el.setSelectionRange(0, el.value.length); if (document.execCommand && document.execCommand('copy')) return 'copied'; } catch (e) { /* 次の方法へ */ }
+    const text = el.textContent;
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return 'copied'; } } catch (e) { /* 次の方法へ */ }
+    try {
+      const r = document.createRange(); r.selectNodeContents(el);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      if (document.execCommand && document.execCommand('copy')) return 'copied';
+    } catch (e) { /* 次の方法へ */ }
     return 'selected';
   }
 
@@ -631,10 +640,10 @@
       <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="mvT">
         <div class="sheet-head"><h2 id="mvT">記録の引っこし</h2><button class="link sheet-x" id="mvClose" aria-label="閉じる">${icon('close')}</button></div>
         <p class="sheet-sub">自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。</p>
-        <p class="mv-now" id="mvNow">いまの記録　${esc(bestLine(best))}</p>
+        <p class="mv-now" id="mvNow">${bestLine(best)}</p>
         <h3 class="sheet-h">持っていく</h3>
         <div class="mv-row"><button class="btn" id="mvSave"${has ? '' : ' disabled'}>ファイルに保存</button><button class="btn ghost" id="mvCopy"${has ? '' : ' disabled'}>コードをコピー</button></div>
-        <textarea class="mv-code mv-out" id="mvOut" rows="2" readonly placeholder="まだ記録がありません" aria-label="記録のコード" autocomplete="off" spellcheck="false">${has ? esc(code) : ''}</textarea>
+        <p class="mv-out" id="mvOut" role="textbox" aria-readonly="true" aria-label="記録のコード" data-empty="まだ記録がありません">${has ? esc(code) : ''}</p>
         <h3 class="sheet-h">受け取る</h3>
         <div class="mv-row"><label class="btn ghost mv-file">ファイルを選ぶ<input type="file" id="mvFile" accept=".txt,text/plain"></label></div>
         <div class="mv-row"><input class="mv-code" id="mvIn" maxlength="${MOVE_MAX}" placeholder="コードを貼り付け" aria-label="受け取るコード" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"><button class="btn ghost" id="mvTake">読み込む</button></div>
@@ -657,7 +666,7 @@
     sh.querySelector('#mvCopy').addEventListener('click', async () => {
       const r = await copyCode(sh.querySelector('#mvOut'));
       msg(r === 'copied' ? 'コードをコピーしました。移す先で貼り付けて「読み込む」を押してください。'
-        : 'コードを選びました。出てきたメニューの「コピー」を押してください。');
+        : 'コードを選びました。長押しして「コピー」を押してください。');
     });
     const take = text => {
       const r = readCode(text);
@@ -669,7 +678,9 @@
       });
       if (!up.length) return msg('読み込んだ記録は、いまの記録と同じか低いので、変わりませんでした。');
       saveBest(now);
-      const nb = sh.querySelector('#mvNow'); nb.textContent = `いまの記録　${bestLine(now)}`; phrase(nb);
+      sh.querySelector('#mvNow').innerHTML = bestLine(now);
+      const out = sh.querySelector('#mvOut'); out.textContent = makeCode(now);
+      sh.querySelector('#mvSave').disabled = false; sh.querySelector('#mvCopy').disabled = false;
       msg(`記録を移しました（${up.join('、')}）。`);
     };
     sh.querySelector('#mvTake').addEventListener('click', () => take(sh.querySelector('#mvIn').value));
@@ -726,6 +737,8 @@
     if (!S.done && ['A', 'B', 'C'].includes(k)) choose(k);
     else if (S.done && (e.key === 'ArrowRight')) next();
   });
+  // iPhone の Safari は、touchstart のリスナーがないと :active（押している間の表示）を出さない
+  document.addEventListener('touchstart', () => {}, { passive: true });
   addEventListener('resize', () => {
     const p = document.getElementById('panel');
     if (p && matchMedia(TWO_COL).matches) p.style.height = '';

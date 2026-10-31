@@ -55,12 +55,9 @@ button { font: inherit; color: inherit; }
 .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
 .btn { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--primary); background: var(--primary); color: var(--primary-ink); font-weight: var(--w-bold); padding: 10px 16px; border-radius: 10px; cursor: pointer; line-height: 1.4; transition: background-color .15s, border-color .15s, opacity .15s; }
-.btn:hover { opacity: .9; }
 .btn:active { opacity: .8; }
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line-2); }
-.btn.ghost:hover { background: var(--raise); opacity: 1; }
 .link { appearance: none; background: none; border: 0; color: var(--muted); cursor: pointer; font-weight: var(--w-bold); }
-.link:hover { color: var(--ink); }
 .eyebrow { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
 
 /* ホーム */
@@ -87,7 +84,6 @@ button { font: inherit; color: inherit; }
 .grp { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .lv { appearance: none; display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 10px 14px 11px; cursor: pointer; line-height: 1.5; transition: background-color .15s; }
 .lv:first-child { border-top: 0; }
-.lv:hover { background: var(--raise); }
 .lv > span { display: block; min-width: 0; }
 .lv .lv-head { display: flex; align-items: center; gap: 10px; }
 .pips { display: flex; gap: 3px; flex: none; }
@@ -102,7 +98,6 @@ button { font: inherit; color: inherit; }
 .lv-w { flex: 1 1 auto; min-width: 0; }
 .lv-n { flex: none; margin-left: auto; white-space: nowrap; font: 500 11.5px/1.65 var(--f-mono); color: var(--faint); }
 .lv:disabled { cursor: default; opacity: .55; }
-.lv:disabled:hover { background: none; }
 /* 名将の戦術（作戦ボードの線アイコン）と前節の一戦（色の点）。レベルの「●●○」と同じ幅 */
 .ico { flex: none; width: 24px; display: flex; align-items: center; color: var(--muted); }
 .ico .club-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 2px solid var(--r); }
@@ -118,7 +113,6 @@ button { font: inherit; color: inherit; }
 .pk-lead { color: var(--muted); font-size: 13.5px; line-height: 1.6; text-wrap: pretty; }
 .pk-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .pk-club { appearance: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 4px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; transition: background-color .15s, border-color .15s; }
-.pk-club:hover { background: var(--raise); }
 .pk-club.on { border-color: var(--pen); }
 .cmag { width: 34px; height: 34px; margin-bottom: 2px; }
 .cmag.sm { width: 14px; height: 14px; margin: 0; }
@@ -147,7 +141,10 @@ button { font: inherit; color: inherit; }
 .sheet-head h2 { font: var(--w-disp) 18px/1.3 var(--f-disp); }
 .sheet-x { display: grid; place-items: center; width: 32px; height: 32px; margin-right: -8px; }
 .sheet-sub { font-size: 12.5px; line-height: 1.55; color: var(--muted); }
-.mv-now { font: 500 12.5px/1.5 var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.mv-now { display: flex; flex-wrap: wrap; gap: 0 12px; font: 500 12px/1.6 var(--f-body); color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.mv-l { color: var(--faint); }
+.mv-i { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mv-i b { font: 600 12px var(--f-mono); color: var(--ink); }
 .sheet-h { margin: 4px 0 0; font-size: 12px; font-weight: var(--w-bold); color: var(--muted); }
 .mv-row { display: flex; gap: 8px; }
 .mv-row > .btn { flex: 1 1 0; padding: 9px 10px; }
@@ -156,7 +153,8 @@ button { font: inherit; color: inherit; }
 .btn:disabled { opacity: .4; cursor: default; }
 /* 入力欄は 16px（iPhone で拡大されないように） */
 .mv-code { min-width: 0; width: 100%; font: 500 16px/1.3 var(--f-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
-.mv-out { resize: none; word-break: break-all; overflow: hidden; }
+.mv-out { font: 500 12px/1.5 var(--f-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; word-break: break-all; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.mv-out:empty::before { content: attr(data-empty); color: var(--faint); font-family: var(--f-body); }
 .mv-code::placeholder { color: var(--faint); font-family: var(--f-body); font-size: 14px; }
 .mv-file { position: relative; text-align: center; }
 .mv-file input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
@@ -208,7 +206,6 @@ button { font: inherit; color: inherit; }
 .qq { font-weight: var(--w-bold); font-size: 15px; line-height: 1.5; }
 .opts { display: grid; gap: 6px; margin-top: auto; }
 .opt { appearance: none; display: flex; align-items: center; gap: 10px; min-height: 44px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; font-size: 14px; line-height: 1.45; transition: background-color .15s, border-color .15s; }
-.opt:hover { background: var(--raise); border-color: var(--line-2); }
 /* 記号 A/B/C はキーの形（ボードの印と同じペンの色） */
 .opt .k, .kc { flex: none; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; background: var(--raise); border: 1px solid var(--line-2); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .35); color: var(--pen); font: 600 12.5px var(--f-mono); }
 
@@ -304,7 +301,6 @@ button { font: inherit; color: inherit; }
 .bdg .hit { fill: transparent; stroke: none; pointer-events: all; }
 .answered .bdg .hit { pointer-events: none; }
 .bdg text { pointer-events: none;  fill: var(--pen-ink); font: 600 2.1px var(--f-mono); text-anchor: middle; }
-.og:hover .bdg circle:not(.hit) { stroke: var(--pen-ink); stroke-width: .4; }
 .og.r2 { color: var(--p-good); } .og.r2 .ln { stroke-width: .6; }
 .og.r1 { color: var(--pen); } .og.r0 { color: var(--p-bad); }
 .og.dim { opacity: .18; }
@@ -321,6 +317,22 @@ button { font: inherit; color: inherit; }
 .ball circle { fill: #FFFFFF; stroke: #141414; stroke-width: .2; }
 .ball .bp { fill: #141414; stroke: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ホバーの表示は、マウスなどで指し示せる端末だけ。iPhone ではタップした場所にホバーが残り、
+   「次の問題へ」を押した位置に出た選択肢が、触っていないのに選んだように明るく見えるため */
+/* 触れている間だけの手ごたえ（指を離すと消える。app.js の touchstart で iPhone でも効く） */
+.lv:active, .pk-club:active, .opt:active { background: var(--raise); }
+.lv:disabled:active { background: none; }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { opacity: .9; }
+  .btn.ghost:hover { background: var(--raise); opacity: 1; }
+  .link:hover { color: var(--ink); }
+  .lv:hover { background: var(--raise); }
+  .lv:disabled:hover { background: none; }
+  .pk-club:hover { background: var(--raise); }
+  .opt:hover { background: var(--raise); border-color: var(--line-2); }
+  .og:hover .bdg circle:not(.hit) { stroke: var(--pen-ink); stroke-width: .4; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .pl, .ball, .og, .btn, .lv, .opt { transition: none; }
@@ -5437,7 +5449,7 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     app.innerHTML = `
     <div class="screen result">
       <div class="r-head">
-        <p class="eyebrow">${esc(D.short)} · ${esc(D.live ? D.name : D.title)}</p>
+        <p class="eyebrow">${esc(D.short)} · ${esc(D.live || D.fav ? D.name : D.title)}</p>
         <div class="score"><b>${sc}</b><span>/${mx}</span>${isNew ? '<em><i></i>自己ベスト</em>' : ''}</div>
         <p class="msg${D.live ? ' msg-live' : ''}">${esc(msg)}</p>
       </div>
@@ -5508,7 +5520,9 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     nodata: '読み込める記録が入っていませんでした。'
   };
   // いまの記録: レベル3つと名将の戦術はいつも、お気に入りクラブは記録のあるクラブだけ
-  const bestLine = best => REC.filter(D => !D.fav || best[D.id] != null).map(D => `${mvName(D)} ${best[D.id] == null ? '—' : best[D.id]}/${maxOf(D)}`).join('・');
+  // いまの記録: 1件ずつ途中で折り返さないようにする（「名将」と「7/12」が別の行に分かれないように）。クラブは記録のあるものだけ
+  const bestLine = best => `<span class="mv-l">いまの記録</span>` + REC.filter(D => !D.fav || best[D.id] != null)
+    .map(D => `<span class="mv-i">${esc(mvName(D))} <b>${best[D.id] == null ? '—' : esc(best[D.id])}</b>/${maxOf(D)}</span>`).join('');
 
   async function saveFile(text) {
     // アーティファクトではホストの保存確認（downloads）、ホーム画面のアプリ・Safari では共有シート（「ファイル」に保存）、どちらもなければ通常のダウンロード
@@ -5532,9 +5546,16 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
       return 'saved';
     } catch (e) { return 'unavailable'; }
   }
+  // コードは入力欄ではなく文字で見せる（入力欄は 16px でないと iPhone で拡大されるため、長いコードが収まらない）。
+  // クリップボードに書けないときは、コードを選んだ状態にしてコピーを試す
   async function copyCode(el) {
-    try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(el.value); return 'copied'; } } catch (e) { /* 次の方法へ */ }
-    try { el.focus(); el.select(); el.setSelectionRange(0, el.value.length); if (document.execCommand && document.execCommand('copy')) return 'copied'; } catch (e) { /* 次の方法へ */ }
+    const text = el.textContent;
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return 'copied'; } } catch (e) { /* 次の方法へ */ }
+    try {
+      const r = document.createRange(); r.selectNodeContents(el);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      if (document.execCommand && document.execCommand('copy')) return 'copied';
+    } catch (e) { /* 次の方法へ */ }
     return 'selected';
   }
 
@@ -5547,10 +5568,10 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
       <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="mvT">
         <div class="sheet-head"><h2 id="mvT">記録の引っこし</h2><button class="link sheet-x" id="mvClose" aria-label="閉じる">${icon('close')}</button></div>
         <p class="sheet-sub">自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。</p>
-        <p class="mv-now" id="mvNow">いまの記録　${esc(bestLine(best))}</p>
+        <p class="mv-now" id="mvNow">${bestLine(best)}</p>
         <h3 class="sheet-h">持っていく</h3>
         <div class="mv-row"><button class="btn" id="mvSave"${has ? '' : ' disabled'}>ファイルに保存</button><button class="btn ghost" id="mvCopy"${has ? '' : ' disabled'}>コードをコピー</button></div>
-        <textarea class="mv-code mv-out" id="mvOut" rows="2" readonly placeholder="まだ記録がありません" aria-label="記録のコード" autocomplete="off" spellcheck="false">${has ? esc(code) : ''}</textarea>
+        <p class="mv-out" id="mvOut" role="textbox" aria-readonly="true" aria-label="記録のコード" data-empty="まだ記録がありません">${has ? esc(code) : ''}</p>
         <h3 class="sheet-h">受け取る</h3>
         <div class="mv-row"><label class="btn ghost mv-file">ファイルを選ぶ<input type="file" id="mvFile" accept=".txt,text/plain"></label></div>
         <div class="mv-row"><input class="mv-code" id="mvIn" maxlength="${MOVE_MAX}" placeholder="コードを貼り付け" aria-label="受け取るコード" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"><button class="btn ghost" id="mvTake">読み込む</button></div>
@@ -5573,7 +5594,7 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     sh.querySelector('#mvCopy').addEventListener('click', async () => {
       const r = await copyCode(sh.querySelector('#mvOut'));
       msg(r === 'copied' ? 'コードをコピーしました。移す先で貼り付けて「読み込む」を押してください。'
-        : 'コードを選びました。出てきたメニューの「コピー」を押してください。');
+        : 'コードを選びました。長押しして「コピー」を押してください。');
     });
     const take = text => {
       const r = readCode(text);
@@ -5585,7 +5606,9 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
       });
       if (!up.length) return msg('読み込んだ記録は、いまの記録と同じか低いので、変わりませんでした。');
       saveBest(now);
-      const nb = sh.querySelector('#mvNow'); nb.textContent = `いまの記録　${bestLine(now)}`; phrase(nb);
+      sh.querySelector('#mvNow').innerHTML = bestLine(now);
+      const out = sh.querySelector('#mvOut'); out.textContent = makeCode(now);
+      sh.querySelector('#mvSave').disabled = false; sh.querySelector('#mvCopy').disabled = false;
       msg(`記録を移しました（${up.join('、')}）。`);
     };
     sh.querySelector('#mvTake').addEventListener('click', () => take(sh.querySelector('#mvIn').value));
@@ -5642,6 +5665,8 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     if (!S.done && ['A', 'B', 'C'].includes(k)) choose(k);
     else if (S.done && (e.key === 'ArrowRight')) next();
   });
+  // iPhone の Safari は、touchstart のリスナーがないと :active（押している間の表示）を出さない
+  document.addEventListener('touchstart', () => {}, { passive: true });
   addEventListener('resize', () => {
     const p = document.getElementById('panel');
     if (p && matchMedia(TWO_COL).matches) p.style.height = '';

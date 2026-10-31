@@ -78,7 +78,7 @@ with sync_playwright() as p:
     # 1) 持ち出し（ファイルとコード）
     ctx, pg = page(b, {'basic': 10, 'coach': 6})
     pg.click('#moveOpen')
-    code = pg.input_value('#mvOut')
+    code = pg.inner_text('#mvOut')
     ok('コードの形', code.startswith('SENJUTSU1:basic=10,coach=6:') and len(code) == len('SENJUTSU1:basic=10,coach=6:') + 4, code)
     with pg.expect_download() as d:
         pg.click('#mvSave')
@@ -160,7 +160,7 @@ with sync_playwright() as p:
     card = pg.inner_text('.lv-fav').replace('\n', '')
     ok('ホームのカードに選んだクラブの自己ベスト', '広島アチェロ' in card and '10/12' in card, card)
     pg.click('#moveOpen')
-    code2 = pg.input_value('#mvOut')
+    code2 = pg.inner_text('#mvOut')
     ok('クラブの記録もコードに入る（北から順）', code2.startswith('SENJUTSU1:basic=5,chiba=8,hiroshima=10:'), code2)
     pg.keyboard.press('Escape')
 
@@ -168,7 +168,7 @@ with sync_playwright() as p:
     ctx.close()
     ctx, pg = page(b)
     pg.click('#moveOpen')
-    ok('記録がないときは保存・コピーできない', pg.is_disabled('#mvSave') and pg.is_disabled('#mvCopy') and pg.input_value('#mvOut') == '')
+    ok('記録がないときは保存・コピーできない', pg.is_disabled('#mvSave') and pg.is_disabled('#mvCopy') and pg.inner_text('#mvOut') == '')
     ctx.close()
     b.close()
 
