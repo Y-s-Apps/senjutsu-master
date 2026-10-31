@@ -180,7 +180,7 @@ else {
     if (str(c.name) && !/^\p{Script=Han}+\S+$/u.test(c.name)) err(t, 'name は「地名（漢字）＋モチーフ」の形（選ぶ画面で2行に分ける）', c.name);
     if (!c.color || !['home', 'rim', 'away'].every(k => /^#[0-9A-Fa-f]{6}$/.test(c.color[k] || ''))) err(t, 'color の home・rim・away は #RRGGBB');
     for (const k of Object.keys(c)) if (!['id', 'name', 'motif', 'color', 'q'].includes(k)) err(t, '知らない項目', k);
-    if (!Array.isArray(c.q) || c.q.length < TM.SESSION) err(t, `問題は ${TM.SESSION} 問以上`, c.q && c.q.length);
+    if (!Array.isArray(c.q) || c.q.length < TM.SESSION * 2) err(t, `問題は ${TM.SESSION * 2} 問以上（前回と重なりすぎないように）`, c.q && c.q.length);
     (c.q || []).forEach((q, qi) => checkQ(q, `${t} Q${qi + 1}(${q.id})`, { lv: true, ctx: true }));
     const phs = new Set((c.q || []).map(q => q.ph));
     if (phs.size < 3) err(t, '場面（攻撃・守備…）が3種類以上あること', [...phs].join(','));
