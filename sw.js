@@ -1,8 +1,8 @@
-// 戦術マスター service worker — version 202610312012（dev/build.js が生成）
+// 戦術マスター service worker — version 202610312021（dev/build.js が生成）
 // - ページ本体（./ と index.html）はネット優先。正常な応答（200）だけを保存し、ネットが使えない・エラーのときは保存済みを出す
 // - アイコン・フォントなど CORE のファイルは保存済み優先（インストール時にブラウザのキャッシュを通さず取得）
 // - それ以外のリクエスト（同じサイトの別ページ・外部）には関わらず、保存もしない
-const CACHE = 'senjutsu-master-202610312012';
+const CACHE = 'senjutsu-master-202610312021';
 const CORE = ['index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'favicon-32.png', 'fonts/tm-display-400.woff2', 'fonts/tm-gothic-400.woff2', 'fonts/tm-gothic-500.woff2', 'fonts/tm-gothic-700.woff2', 'fonts/tm-mono-500.woff2', 'fonts/tm-mono-600.woff2'];
 const PAGE = new URL('./', location).pathname;
 const ASSETS = new Set(CORE.map(u => new URL(u, location).pathname));
