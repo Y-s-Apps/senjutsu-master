@@ -15,7 +15,7 @@
 - fonts/ のフォントが読み込めない       → 失敗
 - 「記録の引っこし」が画面からはみ出す・Esc で閉じない → 失敗（記録なし・ありの両方）
 - 出題の履歴・お気に入りクラブ（localStorage）に壊れた値が入っていると動かない → 失敗
-- お気に入りクラブ: 選ぶ画面がはみ出す、選んだクラブがホームのカードに出ない、1回で6問が出ない、自己ベストが残らない → 失敗
+- お気に入りクラブ: 選ぶ画面がはみ出す、選んだクラブがホームのカードに出ない、前回と3問以上重なる、10回で全問が出ない、自己ベストが残らない → 失敗
 --shots を付けると dev/test/shots/ にスクリーンショットを保存する。
 必要なもの: pip install playwright && playwright install chromium
 """
@@ -191,9 +191,21 @@ def play_fav(pg, tag, strict, checked):
         if i in (0, 1):
             shot(pg, f'{tag}-fav-pick' + ('' if i == 0 else '-set'))
         pg.click(f'[data-fav="{c["id"]}"]')
-        ids = session(pg, tag, c['id'], strict, checked, ('question',) if i == 0 else ())
-        if sorted(ids) != sorted(c['ids'][:6]):
-            fails.append((tag, c['id'], '1回で6問が出ない', ids))
+        # 12問から6問をランダムに（直前の4問だけ避ける）。全問が出るまで続けて遊び、前回と重なるのは2問までを確かめる
+        got, prev = set(), []
+        for k in range(10):
+            ids = session(pg, tag, c['id'], strict, checked, ('question',) if i == 0 and k == 0 else ())
+            if len(ids) != min(6, len(c['ids'])) or len(set(ids)) != len(ids):
+                fails.append((tag, c['id'], '1回の問題の数・重複', ids))
+            if len(set(ids) & set(prev)) > 2:
+                fails.append((tag, c['id'], '前回と3問以上重なった', sorted(set(ids) & set(prev))))
+            got.update(ids)
+            prev = ids
+            if got == set(c['ids']):
+                break
+            pg.click('#retry')
+        if got != set(c['ids']):
+            fails.append((tag, c['id'], '10回で全問が出ない', sorted(set(c['ids']) - got)))
         pg.click('#toHome')
         head = pg.inner_text('.lv-fav')
         best = pg.evaluate("id => (JSON.parse(localStorage.getItem('tacdrill-best-v1')) || {})[id]", c['id'])

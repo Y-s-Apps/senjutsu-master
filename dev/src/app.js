@@ -532,7 +532,7 @@
         }).join('')}
       </ol>
       <div class="acts">
-        <button class="btn ghost" id="retry">${D.live || D.fav ? 'もう一度' : '別の問題で'}</button>
+        <button class="btn ghost" id="retry">${D.live || (D.fav && D.q.length <= TM.SESSION) ? 'もう一度' : '別の問題で'}</button>
         ${nx ? `<button class="btn" id="nextLv">${esc(nx === CLUB ? nx.title : nx.short)}へ${icon('next')}</button>` : ''}
         <button class="btn ghost" id="toHome">ホームへ</button>
       </div>
@@ -544,7 +544,8 @@
   function start(D) {
     if (!D || !D.q.length) return home();
     S.deck = D; S.qi = 0; S.ans = [];
-    S.qs = TM.pick(D.q, TM.SESSION, REC.includes(D) ? loadHist()[D.id] : []).map(q => TM.prep(q));
+    // お気に入りクラブは問題が少ないので、直前の4問だけを避けてランダムに選ぶ（TM.pickLoose）
+    S.qs = (D.fav ? TM.pickLoose : TM.pick)(D.q, TM.SESSION, REC.includes(D) ? loadHist()[D.id] : []).map(q => TM.prep(q));
     question();
   }
   const deckOf = id => (id === 'live' ? liveDeck() : REC.find(D => D.id === id));

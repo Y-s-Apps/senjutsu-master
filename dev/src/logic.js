@@ -39,6 +39,24 @@
     return shuffle(out, rnd);
   }
 
+  // 問題の少ないデッキ（お気に入りクラブ）: 直前に出した block 問だけを避け、残りから場面がかたよらないようにランダムに選ぶ。
+  // 12問から6問なら、前回と重なるのは多くても2問で、毎回ちがう組み合わせになる（pick だと2組を交互に出すだけになる）。
+  function pickLoose(pool, n, hist = [], rnd = Math.random, block = 4) {
+    n = Math.min(n, pool.length);
+    const known = new Set(pool.map(q => q.id));
+    const h = hist.filter(id => known.has(id));
+    const recent = new Set(h.slice(h.length - Math.min(h.length, block, pool.length - n)));
+    const left = shuffle(pool.filter(q => !recent.has(q.id)), rnd);
+    const count = {}, out = [];
+    while (out.length < n && left.length) {
+      left.sort((x, y) => (count[x.ph] || 0) - (count[y.ph] || 0)); // 同じ数どうしはシャッフルした順のまま
+      const q = left.shift();
+      out.push(q);
+      count[q.ph] = (count[q.ph] || 0) + 1;
+    }
+    return shuffle(out, rnd);
+  }
+
   // 出した問題を履歴の最後へ（同じ id は前のものを消す）。長さは max まで。
   const remember = (hist, id, max) => [...(hist || []).filter(x => x !== id), id].slice(-max);
 
@@ -78,5 +96,5 @@
     return m1 === m2 ? `${m1}/${d1}〜${d2}` : `${m1}/${d1}〜${m2}/${d2}`;
   }
 
-  window.TM = { SESSION, shuffle, prep, pick, remember, doneAt, lastRound, dateLabel };
+  window.TM = { SESSION, shuffle, prep, pick, pickLoose, remember, doneAt, lastRound, dateLabel };
 })();

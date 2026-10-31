@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-NMKYhzJr194dVeAszwHhXQoL5jEvEtt6JAy61z+Y16k=' 'sha256-14ZY3Y1sNsHh/00OeOcg08HCcRywQ5bmvU0HYMnhkHo=' 'sha256-kTJvv6pIhbo1tBatpiDJP3KVJAU1g40ADFZ4TWqdB4E=' 'sha256-PUUvwIodltiNMgpVu3g9y+MKRexTRmD22eYxvpKkFFw=' 'sha256-y0j3Grx+HW/kFZAKSo35Kc/EVajr0/wrECUGtRKCUuY=' 'sha256-5udYLQsbnB5jmsfvtCI6d0iZW18SIKrBzp+YkzQwtnk=' 'sha256-FkCZARhhcup16XUHc9vPV2pk9OglxHHlGERtXVJFvoM=' 'sha256-U8fIy+TQ+zlYTGGHCAKboxl0MldeKbeY5hSnPg9T9ow=' 'sha256-dUURKDmTzIyKwRrQ0Ms1JWzjDWckE2kGUYh/hYYyxM4=' 'sha256-k0/BBKMxIOJm5poNbeqIhEJ09bVq6txYgPuCUb+BVcc='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-NMKYhzJr194dVeAszwHhXQoL5jEvEtt6JAy61z+Y16k=' 'sha256-14ZY3Y1sNsHh/00OeOcg08HCcRywQ5bmvU0HYMnhkHo=' 'sha256-kTJvv6pIhbo1tBatpiDJP3KVJAU1g40ADFZ4TWqdB4E=' 'sha256-PUUvwIodltiNMgpVu3g9y+MKRexTRmD22eYxvpKkFFw=' 'sha256-WKT2FgBN5+xgPwfGtSZbTF04XvrJvs0EoR5JZssnvsQ=' 'sha256-5udYLQsbnB5jmsfvtCI6d0iZW18SIKrBzp+YkzQwtnk=' 'sha256-NTmTyLrjfLEQMtS2SzG0WgO5O/sKeZlqSn//vQvC2j8=' 'sha256-U8fIy+TQ+zlYTGGHCAKboxl0MldeKbeY5hSnPg9T9ow=' 'sha256-VCA8uAbWTH7jlHB02kzcU8zncr52QqEFdqiFTol3d3c=' 'sha256-k0/BBKMxIOJm5poNbeqIhEJ09bVq6txYgPuCUb+BVcc='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="戦術ボードの状況を読んで次のプレーを選び、選手の動きと解説で理由を学ぶサッカー戦術クイズ。初級・中級・上級（指導者向け）の3段階。">
 <meta name="theme-color" content="#0B0B0B">
@@ -3067,6 +3067,161 @@ window.FAV = {
           key: ['追い込む', '寄せる角度でパスのコースを消し、相手を決めた方向へ進ませる守り方。追い込んだ先で、味方と奪う。'],
           coach: '「どちらへ追い込むか」をチームで決めてから寄せる。1人目の寄せる角度が、全員の動きを決める。',
           drill: '4対3のビルドアップ。守備の1人目が角度をつけて寄せ、決めたサイドへ追い込んで奪えば1点。'
+        },
+        {
+          id: 'fv-1992-step', t: 'エリアの手前でスルーパス', ph: 'atk', lv: 2, me: 'h11', view: [-2, -3, 72, 40],
+          tag: 'ナビスコカップ 1992年 決勝', ctx: '0-0の後半',
+          h: [[11, 37, 20], [10, 30, 32], [9, 24, 13], [7, 52, 18]],
+          a: [[1, 34, 2], [4, 35.5, 13.5], [5, 28, 9], [3, 44, 10], [2, 20, 12], [6, 31, 24]],
+          ball: [37, 20],
+          s: 'エリアの手前で、11番（あなた）がスルーパスを受けた。目の前にDFが1人いて、コースをふさいでいる。',
+          q: '11番はどうする？',
+          opts: [
+            { k: 'A', l: 'ステップでDFの逆を突いて、シュート', sc: 2, ar: [[[37, 20], [41.5, 15.5], 'drib'], [[41.5, 15.5], [37.5, 0.6], 'pass']], at: [47, 14],
+              why: '小さく速いステップで、DFに一方の動きを予想させます。重心が動いた瞬間に逆へ抜ければ、コースが空いて打てます。' },
+            { k: 'B', l: 'DFがいても、すぐに打つ', sc: 1, ar: [[[37, 20], [34, 0.6], 'pass']], at: [30, 4],
+              why: '早く打てますが、DFに当たりやすいコースです。DFとの距離が遠く、足を出されないときは有効です。' },
+            { k: 'C', l: 'DFを背にして、味方を待つ', sc: 0, mk: [37, 20], at: [43, 22],
+              why: '待つ間にDFが増え、チャンスが消えます。' }
+          ],
+          play: [
+            { m: { h11: [41.5, 15.5], a4: [34, 14] }, b: [41.5, 15.5] },
+            { b: [38, 0.6] }
+          ],
+          ex: 'ナビスコカップ 1992年の決勝。清水ピネータと0-0で迎えた57分、エリア手前でスルーパスを受けたFWが、巧みなステップでDFの逆を突き、左足を振り抜いて決勝点。5万6000人の前で1-0、大会の初代王者になりました。',
+          key: ['ステップでかわす', '足の運びや体の向きで、DFに逆の方向を予想させること。DFの重心が動いた瞬間に、反対へ抜ける。'],
+          coach: '1対1では「DFの足が止まった瞬間」と「重心が動いた方向」を見る。ステップは小さく速く。',
+          drill: 'エリアの手前でパスを受け、DF1人とGKを相手にシュートまで。ステップでDFの逆を突いて打てたら2点。'
+        },
+        {
+          id: 'fv-1993-run', t: '司令塔が前を向いた', ph: 'atk', lv: 1, me: 'h8', view: [-2, -3, 72, 52],
+          tag: 'ナビスコカップ 1993年 決勝', ctx: '0-1で追う後半',
+          h: [[8, 45, 31], [10, 33, 42], [11, 26, 24], [9, 36, 22], [7, 58, 36]],
+          a: [[1, 34, 2], [4, 30, 18], [5, 39, 18.5], [3, 48, 20], [2, 20, 19], [6, 36, 33], [8, 46, 38]],
+          ball: [33, 42],
+          s: '司令塔の10番が前を向いた。MFの8番（あなた）の前、DFラインの背後にスペースがある。',
+          hint: 'パスを出せるようになったのは、いつ？',
+          q: '8番はどうする？',
+          opts: [
+            { k: 'A', l: '10番が前を向いた瞬間に、背後へ走る', sc: 2, ar: [[[45, 31], [44, 11], 'run', [48, 20]]], at: [51, 15],
+              why: '出し手が前を向き、パスを出せる状態になった瞬間が走り出す合図です。そのタイミングなら、DFより先にスペースへ入れます。' },
+            { k: 'B', l: '足元で受けようと、10番へ寄る', sc: 1, ar: [[[45, 31], [40, 37], 'run']], at: [40, 42.5],
+              why: '確実に受けられますが、DFの前でゴールに背を向けることになります。背後にスペースがないときは有効です。' },
+            { k: 'C', l: 'その場で止まって、様子を見る', sc: 0, mk: [45, 31], at: [51, 30],
+              why: '止まっていると、パスを出すタイミングがなくなります。' }
+          ],
+          play: [
+            { m: { h8: [44, 15] }, b: [42, 22] },
+            { m: { h8: [43, 10] }, b: [43, 10] },
+            { b: [37, 0.6] }
+          ],
+          ex: 'ナビスコカップ 1993年の決勝。清水ピネータに13分に先制されましたが、司令塔を中心に反撃し、73分、司令塔のスルーパスに反応したMFが同点ゴール。83分にも勝ち越して2-1、大会連覇を果たしました。',
+          key: ['走り出すタイミング', 'パスの出し手が前を向き、出せる状態になった瞬間に走り出すこと。早すぎるとオフサイド、遅いとDFに戻られる。'],
+          coach: '出し手と受け手で「前を向いたら走る」をそろえる。受け手は、出し手の体の向きを見る。',
+          drill: '中盤の選手が前を向いた瞬間に、2列目が背後へ走る。タイミングが合ってシュートまで行けたら1点。'
+        },
+        {
+          id: 'fv-1993-throw', t: '相手のロングスロー', ph: 'set', lv: 2, me: 'h7', view: [-2, 58, 72, 49],
+          tag: 'ナビスコカップ 1993年 決勝', ctx: '0-0の前半',
+          h: [[7, 40, 85], [5, 33, 99], [3, 24, 98], [4, 44, 99], [6, 29, 88], [2, 15, 94], [1, 34, 103]],
+          a: [[9, 29.5, 95], [11, 40, 95.5], [10, 35, 86], [8, 22, 90], [2, 68, 94]],
+          ball: [67.5, 95],
+          s: '相手が、右からゴール前へロングスローを投げ入れる。ゴール前は味方が競る。MFの7番（あなた）は、エリアの外にいる。',
+          q: '7番はどう守る？',
+          opts: [
+            { k: 'A', l: 'エリアの外の、こぼれ球が落ちる場所を守る', sc: 2, ar: [[[40, 85], [36, 84.5], 'run']], at: [44, 80],
+              why: '競り合いのあと、ボールはエリアの外の中央へこぼれやすく、そこはシュートを打たれやすい場所です。先に立っておけば、拾われる前に防げます。' },
+            { k: 'B', l: 'ゴール前へ下がって、競り合いに加わる', sc: 1, ar: [[[40, 85], [37, 95], 'run']], at: [46, 93],
+              why: '競る人数は増えますが、こぼれ球を拾う場所が空きます。相手の長身の選手が多く、高さで負けそうなときは有効です。' },
+            { k: 'C', l: '前に残って、カウンターに備える', sc: 0, ar: [[[40, 85], [42, 70], 'run']], at: [47, 70],
+              why: '前に残るのはFWの役目です。MFまで残ると、こぼれ球を拾われ放題になります。' }
+          ],
+          play: [
+            { m: { h7: [35.5, 85] }, b: [36, 95] },
+            { b: [35, 87] },
+            { m: { h7: [35, 86.5] }, b: [35.2, 86.2] }
+          ],
+          ex: 'ナビスコカップ 1993年の決勝。13分、清水ピネータのロングスローのこぼれ球を拾われ、左足の強烈なシュートで先制されました。ゴール前で競るだけでなく、こぼれ球が落ちる場所にも人を置くことが大切です。この試合は後半に逆転して2-1、大会連覇を果たしました。',
+          key: ['セットプレーのこぼれ球', 'CKやロングスローの競り合いのあと、ボールがこぼれる場所。エリアの外の中央は、シュートを打たれやすい。'],
+          coach: 'セットプレーの守備では、競る役だけでなく「こぼれ球を拾う役」も決める。エリアの外の中央を空けない。',
+          drill: 'ロングスローやCKの守備で、こぼれ球の位置に1人置く。拾われてシュートを打たれたら攻撃側に1点。'
+        },
+        {
+          id: 'fv-1994-turn', t: 'FKの再開で受けた', ph: 'atk', lv: 2, me: 'h8', view: [-2, -3, 72, 42],
+          tag: 'ナビスコカップ 1994年 決勝', ctx: '1-0でリードした前半',
+          h: [[8, 35, 22], [10, 28, 36], [9, 25, 12], [11, 46, 14]],
+          a: [[1, 34, 2], [5, 37.5, 19.5], [4, 29, 9], [3, 41, 9.5], [6, 42, 26], [2, 18, 14]],
+          ball: [28, 36],
+          s: 'FKを素早く再開し、8番（あなた）へ。背中にはDFがいて、片側から体を寄せてきている。',
+          q: '8番はどう受ける？',
+          opts: [
+            { k: 'A', l: 'DFの寄せと逆へ反転し、前を向く', sc: 2, ar: [[[35, 22], [31, 17], 'drib', [30, 21]]], at: [25, 20],
+              why: 'DFが寄せてくる側と逆へ回れば、体がぶつからずに前を向けます。前を向ければ、そのままゴールを狙えます。' },
+            { k: 'B', l: 'ワンタッチで10番へ戻す', sc: 1, ar: [[[35, 22], [29.5, 34.5], 'pass']], at: [37, 32],
+              why: 'ボールは失いませんが、相手は守備を整えます。DFが体をしっかり寄せていて、回れないときは有効です。' },
+            { k: 'C', l: 'DFを背負ったまま止まる', sc: 0, mk: [35, 22], at: [41, 21],
+              why: '止まっている間に、2人目のDFに挟まれます。' }
+          ],
+          play: [
+            { b: [35.3, 22.3] },
+            { m: { h8: [31, 17], a5: [36, 18] }, b: [31, 17] },
+            { b: [31, 0.6] }
+          ],
+          ex: 'ナビスコカップ 1994年の決勝。34分に高い打点のヘディングで先制し、42分、FKを受けたMFがDFを巧みに反転してかわして追加点。後半は相手のエースを中心にした反撃を粘り強く守り、2-0で大会3連覇を達成しました。',
+          key: ['反転（ターン）', 'DFを背にして受け、体を回して前を向くこと。DFが寄せてくる側と逆へ回るのが基本。'],
+          coach: '受ける前に、DFがどちらから寄せているかを感じ取る。手や背中でDFの位置を確かめる習慣をつける。',
+          drill: '背後にDFをつけた状態でパスを受け、反転してミニゴールへ。DFはどちらか一方から寄せる。'
+        },
+        {
+          id: 'fv-2024-cut', t: '相手のスローインを奪った', ph: 'tr', lv: 2, me: 'h6', view: [-2, 12, 72, 52],
+          tag: 'J1 2024年 第31節', ctx: '0-0の前半',
+          h: [[6, 58, 50], [20, 35, 30], [10, 24, 38], [7, 40, 50], [22, 8, 46], [9, 48, 34]],
+          a: [[3, 35, 27], [4, 26, 25.5], [5, 45, 25.5], [2, 60, 30], [16, 63, 52], [8, 46, 45], [6, 30, 44]],
+          ball: [58, 50],
+          s: '相手のスローインを、右WBの6番（あなた）が中盤でカットした。前線では、FWの20番がDFを背負っている。',
+          q: '6番はどうする？',
+          opts: [
+            { k: 'A', l: 'すぐに前線の20番へ縦パスを入れる', sc: 2, ar: [[[58, 50], [36, 31.5], 'pass']], at: [44, 38],
+              why: '奪った瞬間は、相手の守備がまだ整っていません。前線へ速く入れれば、少ない人数のうちにゴールへ迫れます。' },
+            { k: 'B', l: 'いったん中の7番へ預ける', sc: 1, ar: [[[58, 50], [41.5, 50], 'pass']], at: [49, 55],
+              why: '確実ですが、相手は守備を整えます。前線へのコースがふさがれているときは有効です。' },
+            { k: 'C', l: 'タッチライン沿いをドリブルする', sc: 0, ar: [[[58, 50], [64, 36], 'drib']], at: [67, 44],
+              why: 'すぐ近くに相手がいて、奪い返されやすい場所です。' }
+          ],
+          play: [
+            { b: [35.5, 31] },
+            { m: { h20: [38, 26], a3: [36, 28] }, b: [38.5, 26] },
+            { m: { h20: [40, 22], a3: [39, 23.5] }, b: [40, 22] }
+          ],
+          ex: 'J1 2024年の第31節。18分、相手のスローインを右WBが中盤でカットし、すぐに前線のFWへ縦パス。FWはDFを背負ってターンし、ゴールへ向かったところで倒されてFKを獲得。MFが左足でゴール右隅へ決めて先制しました。2-0で勝ってリーグ戦4連勝。J1復帰1年目は6位でした。',
+          key: ['スローインを狙う', '相手のスローインは受け手が限られるので、狙って奪いやすい。奪えれば、相手の守備が整う前に攻められる。'],
+          coach: '相手のスローインでは、受け手の近くに寄せて「投げる先」を減らす。奪ったら最初のパスは前へ。',
+          drill: 'スローインから始める4対4。守備側は奪ったら5秒以内に前線の選手へパスを入れれば1点。'
+        },
+        {
+          id: 'fv-2024-fk', t: 'ゴールに近いFK', ph: 'set', lv: 2, me: 'h18', view: [-2, -3, 72, 34],
+          tag: 'J1 2024年 第31節', ctx: '0-0の前半',
+          h: [[18, 33, 21], [20, 45, 8.5], [9, 26, 13]],
+          a: [[1, 30.5, 2], [7, 33.5, 12], [8, 37, 12], [10, 40.5, 12], [5, 48.5, 12.5], [4, 22, 9.5]],
+          ball: [33, 21],
+          s: 'エリアのすぐ外でFK。相手は壁を3人並べ、GKは壁と反対側に立っている。左利きの18番（あなた）が蹴る。',
+          q: '18番はどこを狙う？',
+          opts: [
+            { k: 'A', l: 'GKから遠い右隅へ、壁の外を巻いて蹴る', sc: 2, ar: [[[33, 21], [38, 0.6], 'pass', [46, 11]]], at: [51, 5],
+              why: 'GKは壁と反対側を守っています。壁の外を回って右隅へ巻けば、GKからいちばん遠いコースになります。' },
+            { k: 'B', l: '壁の上を越えて、右隅へ落とす', sc: 1, ar: [[[33, 21], [36.5, 0.6], 'pass', [36, 7]]], at: [29, 8],
+              why: 'GKから遠いコースですが、壁を越えて落とすには高さと落差が必要です。壁の背が低いときは有効です。' },
+            { k: 'C', l: 'GKの立っている左側へ強く蹴る', sc: 0, ar: [[[33, 21], [30, 0.6], 'pass']], at: [24.5, 4],
+              why: 'GKの正面に近いコースで、止められやすくなります。' }
+          ],
+          play: [
+            { b: [43.5, 9] },
+            { b: [38, 0.6] }
+          ],
+          ex: 'J1 2024年の第31節。18分、FWが倒されて得たFKを、左利きのMFが左足でゴール右隅へ決めて先制しました。2-0で勝ってリーグ戦4連勝。FKは、GKの立ち位置と壁の位置から、いちばん遠いコースを選びます。',
+          key: ['FKのコース', '直接FKでは、壁とGKの位置を見て、GKから遠いコースを選ぶ。壁の外を巻くか、壁の上を越すか。'],
+          coach: 'FKの前に、壁の端とGKの立ち位置を確かめさせる。蹴る前に狙うコースを決めて迷わない。',
+          drill: 'マネキンの壁とGKを置いた直接FK。GKから遠いコースに決めたら2点、近いコースは1点。'
         }
       ]
     },
@@ -3930,6 +4085,24 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     return shuffle(out, rnd);
   }
 
+  // 問題の少ないデッキ（お気に入りクラブ）: 直前に出した block 問だけを避け、残りから場面がかたよらないようにランダムに選ぶ。
+  // 12問から6問なら、前回と重なるのは多くても2問で、毎回ちがう組み合わせになる（pick だと2組を交互に出すだけになる）。
+  function pickLoose(pool, n, hist = [], rnd = Math.random, block = 4) {
+    n = Math.min(n, pool.length);
+    const known = new Set(pool.map(q => q.id));
+    const h = hist.filter(id => known.has(id));
+    const recent = new Set(h.slice(h.length - Math.min(h.length, block, pool.length - n)));
+    const left = shuffle(pool.filter(q => !recent.has(q.id)), rnd);
+    const count = {}, out = [];
+    while (out.length < n && left.length) {
+      left.sort((x, y) => (count[x.ph] || 0) - (count[y.ph] || 0)); // 同じ数どうしはシャッフルした順のまま
+      const q = left.shift();
+      out.push(q);
+      count[q.ph] = (count[q.ph] || 0) + 1;
+    }
+    return shuffle(out, rnd);
+  }
+
   // 出した問題を履歴の最後へ（同じ id は前のものを消す）。長さは max まで。
   const remember = (hist, id, max) => [...(hist || []).filter(x => x !== id), id].slice(-max);
 
@@ -3969,7 +4142,7 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     return m1 === m2 ? `${m1}/${d1}〜${d2}` : `${m1}/${d1}〜${m2}/${d2}`;
   }
 
-  window.TM = { SESSION, shuffle, prep, pick, remember, doneAt, lastRound, dateLabel };
+  window.TM = { SESSION, shuffle, prep, pick, pickLoose, remember, doneAt, lastRound, dateLabel };
 })();
 </script>
 <script>
@@ -4512,7 +4685,7 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
         }).join('')}
       </ol>
       <div class="acts">
-        <button class="btn ghost" id="retry">${D.live || D.fav ? 'もう一度' : '別の問題で'}</button>
+        <button class="btn ghost" id="retry">${D.live || (D.fav && D.q.length <= TM.SESSION) ? 'もう一度' : '別の問題で'}</button>
         ${nx ? `<button class="btn" id="nextLv">${esc(nx === CLUB ? nx.title : nx.short)}へ${icon('next')}</button>` : ''}
         <button class="btn ghost" id="toHome">ホームへ</button>
       </div>
@@ -4524,7 +4697,8 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
   function start(D) {
     if (!D || !D.q.length) return home();
     S.deck = D; S.qi = 0; S.ans = [];
-    S.qs = TM.pick(D.q, TM.SESSION, REC.includes(D) ? loadHist()[D.id] : []).map(q => TM.prep(q));
+    // お気に入りクラブは問題が少ないので、直前の4問だけを避けてランダムに選ぶ（TM.pickLoose）
+    S.qs = (D.fav ? TM.pickLoose : TM.pick)(D.q, TM.SESSION, REC.includes(D) ? loadHist()[D.id] : []).map(q => TM.prep(q));
     question();
   }
   const deckOf = id => (id === 'live' ? liveDeck() : REC.find(D => D.id === id));

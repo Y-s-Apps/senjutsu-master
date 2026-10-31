@@ -6,7 +6,7 @@
 'use strict';
 const path = require('path');
 global.window = {};
-for (const f of ['data1.js', 'data2.js', 'data3.js', 'data4.js', 'logic.js']) require(path.join(__dirname, '..', 'src', f));
+for (const f of ['data1.js', 'data2.js', 'data3.js', 'data4.js', 'data5.js', 'logic.js']) require(path.join(__dirname, '..', 'src', f));
 const LIVE = require('../livedata').load();
 const TM = window.TM;
 let bad = 0;
@@ -69,6 +69,33 @@ for (const D of decks) {
   const s = TM.pick(pool, 6, ['<img>', 42, null, 'zzz', ...pool.slice(0, 3).map(q => q.id)], r);
   ok('知らない id が混じった履歴でも選べる', s.length === 6 && !s.some(q => pool.slice(0, 3).includes(q)));
   ok('問題が少ないときは全部出す', TM.pick(pool.slice(0, 4), 6, [], r).length === 4);
+}
+
+/* ---------- お気に入りクラブ（pickLoose: 直前の4問だけ避けてランダム） ---------- */
+for (const c of window.FAV.clubs.filter(c => c.q.length > TM.SESSION)) {
+  const n = TM.SESSION, pool = c.q;
+  let sizeOk = true, overlapMax = 0, combos = new Set(), cover = Infinity, phaseOk = true;
+  for (let seed = 1; seed <= 40; seed++) {
+    const r = rng(seed * 104729);
+    let hist = [], prev = [];
+    const got = new Set();
+    for (let k = 0; k < 20; k++) {
+      const s = TM.pickLoose(pool, n, hist, r);
+      const ids = s.map(q => q.id);
+      if (new Set(ids).size !== n) sizeOk = false;
+      overlapMax = Math.max(overlapMax, ids.filter(id => prev.includes(id)).length);
+      if (k === 0 && new Set(s.map(q => q.ph)).size < Math.min(3, new Set(pool.map(q => q.ph)).size)) phaseOk = false;
+      combos.add([...ids].sort().join(','));
+      ids.forEach(id => { got.add(id); hist = TM.remember(hist, id, pool.length); });
+      if (got.size === pool.length) cover = Math.min(cover, k + 1);
+      prev = ids;
+    }
+  }
+  ok(`fav ${c.id}: 1回に ${n} 問（重複なし）`, sizeOk);
+  ok(`fav ${c.id}: 前回と重なるのは2問まで`, overlapMax <= 2, overlapMax);
+  ok(`fav ${c.id}: 組み合わせが毎回変わる（2組の交互にならない）`, combos.size > 10, combos.size);
+  ok(`fav ${c.id}: いずれ全問が出る`, cover <= 6, cover);
+  ok(`fav ${c.id}: 最初の回は場面が3種類以上`, phaseOk);
 }
 
 /* ---------- 前節 ---------- */
