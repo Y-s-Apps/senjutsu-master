@@ -11,6 +11,7 @@
 コードを人が読むこと（innerHTML に入る値・保存データの検証・新しい機能の入り口）は、このスクリプトでは代わりにならない。
 """
 import base64, hashlib, json, os, re, shutil, struct, subprocess, sys, tempfile
+from html.parser import HTMLParser
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 REPO = 'Y-s-Apps/senjutsu-master'
@@ -52,6 +53,32 @@ def gh(path, jq=None):
         return None
     out = p.stdout.decode().strip()
     return out if jq else json.loads(out or 'null')
+
+
+class Page(HTMLParser):
+    """index.html から CSP と埋め込みの script を取り出す（正規表現で HTML を読まない）。"""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=False)
+        self.csp, self.scripts, self.script_attrs, self._in = None, [], [], None
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == 'meta' and (a.get('http-equiv') or '').lower() == 'content-security-policy':
+            self.csp = a.get('content')
+        if tag == 'script':
+            if attrs:
+                self.script_attrs.append(attrs)
+            self._in = []
+
+    def handle_data(self, data):
+        if self._in is not None:
+            self._in.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == 'script' and self._in is not None:
+            self.scripts.append(''.join(self._in))
+            self._in = None
 
 
 def src_files():
@@ -107,16 +134,17 @@ def audit_external():
                 net.append(f'{f}:{i}')
     say('NG' if net else 'OK', '通信する API（fetch・XHR・WebSocket・sendBeacon・import()・Worker・src の書き換え）' + (': ' + ', '.join(net) if net else 'なし'))
 
-    html = read('index.html')
-    m = re.search(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)"', html)
-    if not m:
+    page = Page()
+    page.feed(read('index.html'))
+    page.close()
+    if not page.csp:
         say('NG', 'index.html に CSP がない')
         return
-    csp = m.group(1)
+    csp = page.csp
     hashes = set(re.findall(r"'sha256-([A-Za-z0-9+/=]+)'", csp))
-    bodies = re.findall(r'<script>(.*?)</script>', html, re.S)
+    bodies = page.scripts
     actual = {base64.b64encode(hashlib.sha256(b.encode()).digest()).decode() for b in bodies}
-    other = re.findall(r'<script(?![>])[^>]*>', html)
+    other = page.script_attrs
     probs = []
     if not csp.startswith("default-src 'none'"):
         probs.append("default-src 'none' でない")

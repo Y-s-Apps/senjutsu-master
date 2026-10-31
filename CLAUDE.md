@@ -124,6 +124,6 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
    - ③ `build.js` の sw の部分が変わったか（変わったら offline.py の場面が足りているか）。
    - ④ 新しく公開するファイル・HANDOFF・CLAUDE.md・コミットメッセージに、個人のアカウント名・名前の候補・実在の個人の情報・秘密の値がないか。audit.py が探せるのは今のアカウント名（`gh api user`）だけなので、旧名を確かめたいときはユーザーに聞いて環境変数 `AUDIT_NAMES` で渡す（ファイルには書かない）。報告にも名前は書かず、件数だけにする。
    - ⑤ 組織にリポジトリが増えていたら、そのリポジトリにも ruleset と Wiki・Projects のオフが要る（組織全体の ruleset は有料プランのみ）。
-6. ユーザーに確かめてもらう: https://github.com/Y-s-Apps/senjutsu-master/security の「Code scanning」が 0 Open か（この環境では code scanning・Dependabot の指摘、組織の設定、Pages の設定は API で読めない）。
+6. ユーザーに確かめてもらう: https://github.com/Y-s-Apps/senjutsu-master/security の「Code scanning」が 0 Open か（この環境では code scanning・Dependabot の指摘、組織の設定、Pages の設定は API で読めない）。push のあと CodeQL が終わるまで数分かかる。テストや道具の script（`dev/`）も分析される。HTML は正規表現で読まず `html.parser` などを使う（2026-11-01、audit.py が正規表現で script タグを探していて「Bad HTML filtering regexp」が2件出た）。
 7. 直す: 1項目ずつ、直す → テスト → push → アーティファクト。履歴の書き換え・リポジトリの作り直し・公開範囲の変更など元に戻せないものは、選択肢を出してユーザーに決めてもらう。ブランチは作らない（このチャットの接続では消せない）。
 8. 報告は①〜⑥を1行ずつ短く。HANDOFF.md §4 に「日付: セキュリティ診断（対象 <1のコミット>..<HEAD>）」と結果を足して push し、「ナレッジの同期を押してください」を添える。
