@@ -65,6 +65,14 @@ function checkQ(q, tag, opt = {}) {
   q.play.forEach(st => {
     Object.entries(st.m || {}).forEach(([id, p]) => { if (!/^[ha]\d+$/.test(id) || !pt(p)) err(tag, 'play の形', id, p); });
     if (st.b != null && !pt(st.b)) err(tag, 'play のボール', st.b);
+    if (st.bc != null && (!pt(st.bc) || !st.b)) err(tag, 'play の bc（曲線の制御点）は [x, y] で、b と一緒に書く', st.bc);
+    if (st.hi != null && (st.hi !== true || !st.b)) err(tag, 'play の hi（浮き球）は true で、b と一緒に書く');
+    if (st.bt != null && (![2, 3].includes(st.bt) || !st.b)) err(tag, 'play の bt（ボールが飛ぶステップ数）は 2 か 3 で、b と一緒に書く', st.bt);
+    if (st.cont != null && (st.cont !== true || !st.b)) err(tag, 'play の cont（止めずに次へつなぐ）は true で、b と一緒に書く');
+    for (const k of Object.keys(st)) if (!['m', 'b', 'bc', 'hi', 'bt', 'cont'].includes(k)) err(tag, 'play の知らない項目', k);
+  });
+  q.play.forEach((st, i) => {
+    for (let j = i + 1; j < i + (st.bt || 1); j++) if (!q.play[j] || q.play[j].b) err(tag, `play の${i + 1}番目は bt: ${st.bt} なので、${j + 1}番目のステップにボール（b）を書かない（ステップも必要）`);
   });
 
   const ids = new Set([...q.h.map(p => 'h' + p[0]), ...q.a.map(p => 'a' + p[0])]);
@@ -107,6 +115,88 @@ function checkQ(q, tag, opt = {}) {
     if (!inV(at)) err(tag, o.k, '記号がボードの外（矢印の先）', at.map(n => n.toFixed(1)));
     if (!o.at && o.mk) return;
     ps.forEach(pp => { const d = Math.hypot(pp[1] - at[0], pp[2] - at[1]); if (d < 3.2) note('badge near', tag, o.k, pp[0], d.toFixed(1)); });
+  });
+  checkMotion(q, tag);
+}
+
+// 回答後の動きの確認（注意だけで、失敗にはしない）。app.js と同じ TM.motion で、選手とボールを 25ms ごとに追う。
+//   overlap   動いたあと、選手のマグネットが大きく重なる（中心の距離 2m 未満）
+//   cross     走っている途中で、選手が別の選手の上を通り抜ける（1.5m 未満）
+//   ball over ゴロ（hi なし）が、蹴った人・受けた人以外の選手の上を通る。浮き球なら hi: true、そうでなければ位置をずらす
+//   shot wide ゴールに入るボールが、ポストの外に描かれる（ボールは足元へ少しずらして描くので、x は 29.3〜36.1 に）
+//   runner late ボールがだれもいない点を通って次へ進むのに、その点へ選手が着くのは次のステップ（ボールがひとりでに動いて見える）
+//   arrow curve ベストの矢印は曲線なのに、ボールはまっすぐ動く（play に bc を書く）
+const BO = [1.35, -1.15]; // app.js と同じ（ボールは足元へ少しずらして描く）
+function bezier([x1, y1, x2, y2]) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = t => ((ax * t + bx) * t + cx) * t, Y = t => ((ay * t + by) * t + cy) * t;
+  return x => {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    let lo = 0, hi = 1;
+    for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2; if (X(m) < x) lo = m; else hi = m; }
+    return Y((lo + hi) / 2);
+  };
+}
+function checkMotion(q, tag) {
+  const M = TM.motion(q), D = TM.MOTION, EP = bezier(TM.EASE.player);
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const pos0 = {};
+  q.h.forEach(([n, x, y]) => { pos0['h' + n] = [x, y]; });
+  q.a.forEach(([n, x, y]) => { pos0['a' + n] = [x, y]; });
+  const seg = {}, cur = { ...pos0 };
+  q.play.forEach((st, i) => Object.entries(st.m || {}).forEach(([id, p]) => {
+    (seg[id] = seg[id] || []).push({ t0: M.start + i * M.gap, from: cur[id], to: p }); cur[id] = p;
+  }));
+  const pAt = (id, t) => {
+    let p = pos0[id];
+    for (const s of seg[id] || []) {
+      if (t < s.t0) break;
+      const u = EP(Math.min(1, (t - s.t0) / D.player));
+      p = [s.from[0] + (s.to[0] - s.from[0]) * u, s.from[1] + (s.to[1] - s.from[1]) * u];
+    }
+    return p;
+  };
+  const ids = Object.keys(pos0), T = M.start + q.play.length * M.gap + 300;
+  const seen = new Set(), once = (k, ...a) => { if (!seen.has(k)) { seen.add(k); note(...a); } };
+  for (let a = 0; a < ids.length; a++) for (let b = a + 1; b < ids.length; b++) {
+    const A = ids[a], B = ids[b];
+    if (!seg[A] && !seg[B]) continue;
+    const end = dist(pAt(A, T), pAt(B, T));
+    if (end < 2) { once('o' + A + B, 'overlap', tag, A, B, end.toFixed(1)); continue; }
+    for (let t = M.start; t <= T; t += 25) {
+      const d = dist(pAt(A, t), pAt(B, t));
+      if (d < 1.5) { once('c' + A + B, 'cross', tag, A, B, d.toFixed(1), `${t}ms`); break; }
+    }
+  }
+  M.legs.forEach((L, k) => {
+    const E = bezier(L.ease);
+    const along = p => {
+      for (let j = 1; j < L.path.length; j++) {
+        const [x0, y0, o0] = L.path[j - 1], [x1, y1, o1] = L.path[j];
+        if (p <= o1 || j === L.path.length - 1) { const u = o1 > o0 ? Math.min(1, Math.max(0, (p - o0) / (o1 - o0))) : 1; return [x0 + (x1 - x0) * u, y0 + (y1 - y0) * u]; }
+      }
+    };
+    const near = (p, t) => { let id = null, bd = D.near; ids.forEach(x => { const e = dist(pAt(x, t), p); if (e <= bd) { bd = e; id = x; } }); return id; };
+    const goal = L.to[1] <= 1.6;
+    if (goal && (L.to[0] < 29.3 || L.to[0] > 36.1)) note('shot wide', tag, `play ${L.i + 1}`, L.to);
+    if (L.kind === 'kick') {
+      const skip = new Set([near(L.from, L.t0), goal ? null : near(L.to, L.t0 + L.dur + 200)]);
+      for (let t = L.t0 + 25; t < L.t0 + L.dur; t += 20) {
+        const b = along(E((t - L.t0) / L.dur)), vb = [b[0] + BO[0], b[1] + BO[1]];
+        ids.forEach(x => { if (!skip.has(x) && dist(pAt(x, t), vb) < 1.5) { skip.add(x); once('b' + k + x, 'ball over', tag, `play ${L.i + 1}`, x); } });
+      }
+    }
+    const nx = M.legs[k + 1];
+    if (L.cont && !q.play[L.i].cont) {
+      const late = Object.entries(q.play[nx.i].m || {}).filter(([, p]) => dist(p, L.to) <= D.near).map(([id]) => id);
+      if (late.length) note('runner late', tag, `play ${L.i + 1}→${nx.i + 1}`, late.join(','));
+    }
+  });
+  const best = q.opts.find(o => o.sc === 2);
+  (best && best.ar || []).filter(a => a[2] === 'pass' && a[3]).forEach(a => {
+    const L = M.legs.find(x => dist(x.from, a[0]) < 2.5);
+    if (L && !L.c) note('arrow curve', tag, `play ${L.i + 1}`);
   });
 }
 

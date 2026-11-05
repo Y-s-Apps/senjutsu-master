@@ -3,6 +3,7 @@
 // - 選択肢の並べ替え: 記号は A/B/C の順に振り直し、中身は変えない。ベストの位置がかたよらない
 // - 問題の選び方: 続けて同じ問題が出ない・全問がひと回りで出る・場面がばらける・壊れた履歴を無視する
 // - 前節: 日程から「いま終わっている直近の節」を選ぶ（水曜開催・別日の試合・end・分析がない節・シーズンの切れ目）
+// - 回答後の動き: ドリブル・蹴ったボール・浮き球の見分け、空中で止めずにつなぐ・bt・cont・曲線
 'use strict';
 const path = require('path');
 global.window = {};
@@ -146,6 +147,32 @@ for (const [name, t, want] of cases) {
 }
 ok('日付の表示', TM.dateLabel(['2026-10-24', '2026-10-25']) === '10/24〜25' && TM.dateLabel(['2026-10-31', '2026-11-01']) === '10/31〜11/1' && TM.dateLabel(['2026-10-21']) === '10/21(水)',
   [TM.dateLabel(['2026-10-24', '2026-10-25']), TM.dateLabel(['2026-10-31', '2026-11-01']), TM.dateLabel(['2026-10-21'])]);
+
+/* ---------- 回答後の動き（TM.motion） ---------- */
+{
+  const base = { h: [[9, 30, 40], [10, 50, 20]], a: [[1, 34, 2], [4, 40, 30]], ball: [30, 40] };
+  const M = play => TM.motion({ ...base, play });
+  const G = TM.MOTION.gap, S = TM.MOTION.start;
+  let m = M([{ m: { h9: [30, 30] }, b: [30, 30] }]);
+  ok('同じ選手の足元から足元へはドリブル（選手と同じ長さ）', m.legs[0].kind === 'drib' && m.legs[0].dur === TM.MOTION.player);
+  m = M([{ b: [50, 20] }]);
+  ok('味方へのパスは蹴ったボール（止まる）', m.legs[0].kind === 'kick' && !m.legs[0].cont && m.legs[0].dur === TM.MOTION.kick && m.legs[0].t0 === S);
+  m = M([{ b: [40, 14] }, { b: [50, 20] }]);
+  ok('だれもいない点を通るボールは止めずにつなぐ', m.legs[0].cont && m.legs[0].dur === G && !m.legs[1].cont && m.legs[1].t0 === S + G);
+  m = M([{ b: [40, 14] }, { m: { h10: [40, 14] } }]);
+  ok('次のステップでボールが動かなければ、つながない', !m.legs[0].cont);
+  m = M([{ b: [40, 29], cont: true }, { b: [50, 20] }]);
+  ok('cont なら選手がいてもつなぐ', m.legs[0].cont);
+  m = M([{ b: [50, 20], hi: true, bt: 2 }, { m: { h10: [50, 21] } }]);
+  ok('bt: 2 は2ステップかけて飛び、着いた先の選手を見る', m.legs[0].dur === G + TM.MOTION.air && m.legs[0].kind === 'air' && !m.legs[0].free);
+  m = M([{ b: [40, 14], hi: true }, { b: [34, 1], hi: true }]);
+  ok('続けて飛ぶ浮き球は、高さの上がり下がりを1回に分ける', m.legs[0].lift[0] === 0 && Math.abs(m.legs[0].lift[1] - m.legs[1].lift[0]) < 1e-9 && m.legs[1].lift[1] === 1);
+  m = M([{ b: [34, 1], bc: [20, 10] }]);
+  const P = m.legs[0].path;
+  ok('bc は曲線（制御点の側へふくらむ・道のりの割合は 0→1）', P.length > 10 && P[0][2] === 0 && P[P.length - 1][2] === 1 && P[12][0] < 32);
+  const reduce = TM.motion({ ...base, play: [{ b: [40, 14] }, { b: [50, 20] }] }, true);
+  ok('動きを減らす設定では間隔を短く', reduce.gap === 700 && reduce.legs[1].t0 === S + 700);
+}
 
 console.log(bad ? `${bad} fail` : 'ok');
 process.exit(bad ? 1 : 0);

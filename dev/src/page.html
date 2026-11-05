@@ -305,9 +305,9 @@ button { font: inherit; color: inherit; }
 .og.r1 { color: var(--pen); } .og.r0 { color: var(--p-bad); }
 .og.dim { opacity: .18; }
 
-.pl, .ball { transition: transform .85s cubic-bezier(.45, .05, .25, 1); }
-.ball { transition-duration: .7s; }
-.snap .pl, .snap .ball { transition: none; }
+/* 選手の動き（長さと速さの変化は logic.js の MOTION.player・EASE.player と同じ）。ボールは app.js が Web Animations で動かす */
+.pl { transition: transform .85s cubic-bezier(.45, .05, .25, 1); }
+.snap .pl { transition: none; }
 .mag { stroke: rgba(255, 255, 255, .25); stroke-width: .2; }
 .t-h .mag { fill: var(--home); } .t-a .mag { fill: var(--away); }
 .gk .mag { stroke: var(--chalk); stroke-width: .45; }
@@ -335,7 +335,7 @@ button { font: inherit; color: inherit; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pl, .ball, .og, .btn, .lv, .opt { transition: none; }
+  .pl, .og, .btn, .lv, .opt { transition: none; }
   .me-ring { animation: none; }
 }
 </style>

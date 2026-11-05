@@ -186,12 +186,30 @@
       ${field()}${s.lanes ? lanes(v) : ''}${s.line ? offside(s.line) : ''}
       <g class="opts-g">${s.opts.map(optG).join('')}</g>
       <g class="pls">${players(s)}</g>
-      <g class="ball" style="transform:${ballXY(s.ball)}"><circle r=".95"/><circle class="bp" r=".38"/></g>
+      <g class="ball" style="transform:${ballXY(s.ball)}"><g class="bz"><circle r=".95"/><circle class="bp" r=".38"/></g></g>
     </svg>`;
   }
 
   /* ---------- アニメーション ---------- */
-  function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; }
+  // 選手は CSS の transition、ボールは Web Animations で動かす（ボールの1回ずつの動きの長さ・速さの変化は logic.js の TM.motion）
+  function clearTimers() {
+    S.timers.forEach(clearTimeout); S.timers = [];
+    (S.anims || []).forEach(a => a.cancel()); S.anims = [];
+  }
+  const bez = e => `cubic-bezier(${e.join(',')})`;
+  function runLeg(ball, L) {
+    ball.style.transform = ballXY(L.to);
+    if (reduce || !ball.animate) return;
+    S.anims.push(ball.animate(L.path.map(([x, y, o]) => ({ transform: ballXY([x, y]), offset: o })), { duration: L.dur, easing: bez(L.ease) }));
+    // 浮き球: 飛んでいる時間のまん中でいちばん高く（大きく）見せる。lift は、続けて飛ぶときにこの動きが受け持つ範囲
+    if (L.hi && L.lift) {
+      const [a, b] = L.lift, N = 8;
+      S.anims.push(ball.firstElementChild.animate(Array.from({ length: N + 1 }, (_, k) => {
+        const t = a + (b - a) * k / N;
+        return { transform: `scale(${f(1 + 2 * t * (1 - t))})`, offset: k / N };
+      }), { duration: L.dur }));
+    }
+  }
   function placeAll(s) {
     const svg = document.getElementById('pitch'); if (!svg) return;
     svg.classList.add('snap');
@@ -204,16 +222,17 @@
   }
   function play(s) {
     clearTimers(); placeAll(s);
-    const svg = document.getElementById('pitch');
-    const gap = reduce ? 700 : 1050;
+    const svg = document.getElementById('pitch'), ball = svg.querySelector('.ball');
+    const M = TM.motion(s, reduce);
     s.play.forEach((st, i) => {
+      const L = M.legs.find(x => x.i === i);
       S.timers.push(setTimeout(() => {
         if (!svg.isConnected) return;
         Object.entries(st.m || {}).forEach(([id, [x, y]]) => {
           const el = svg.querySelector(`[data-id="${id}"]`); if (el) el.style.transform = `translate(${x}px,${y}px)`;
         });
-        if (st.b) svg.querySelector('.ball').style.transform = ballXY(st.b);
-      }, 350 + i * gap));
+        if (L) runLeg(ball, L);
+      }, M.start + i * M.gap));
     });
   }
 
