@@ -135,7 +135,7 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 修正・新機能のたびに行う（2026-11-01 のユーザーの指定）。依頼文は HANDOFF.md §1。項目は ①コード ②外部通信と依存 ③Service Worker ④公開物と個人情報 ⑤GitHub の設定 ⑥アーティファクト。これまでの結果は HANDOFF.md §4（「セキュリティ診断」で検索）。
 1. 対象を決める: 前回の診断の記録を足したコミット（`git log -1 --format=%h -G'セキュリティ診断' -- HANDOFF.md`）から HEAD まで。
 2. アーティファクトを Artifact の read で読み、見出しで公開範囲が「自分だけ」・capability が `downloads` だけかを見る。保存されたファイルを次に渡す。
-3. `python3 dev/test/audit.py --since <1のコミット> --artifact <2のファイル>`。NG は直す。「要確認」は人が読んで判断し、「読めない」はユーザーに確かめてもらう。
+3. `python3 dev/test/audit.py --since <1のコミット> --artifact <2のファイル>`。NG は直す。「要確認」は人が読んで判断し、「読めない」はユーザーに確かめてもらう。⑤のリポジトリの設定が「読めない」ときは、先にリポジトリを push 権限でセッションに加えてから流し直す（加えていないと API が 403 を返す）。
 4. テストをすべて流す: `node dev/check.js`・`node dev/test/logic.js`・`python3 dev/test/fit.py`・`python3 dev/test/move.py`・`python3 dev/test/offline.py`。
 5. 差分を読む（audit.py の代わりにならないところ）:
    - ① 変わった script の、HTML を差し込む場所に入る値（`esc()` を通るか、数値・決まった文字列だけか）、style・class・SVG の属性に入る値（データなら check.js が型・形を確かめるか。色は `#RRGGBB`、id は英小文字）、新しい保存データ（キーはアプリ名で始め、読むときに知っている値だけ残す）、外から読み込むもの（記録の引っこしなど。大きさ・形を確かめてから使う）。
