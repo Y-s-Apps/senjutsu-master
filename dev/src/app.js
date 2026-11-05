@@ -68,6 +68,22 @@
     });
     return out;
   };
+  // 前節の一戦の自己ベスト: 節ごとに別の key（`j1-2026-12` = シーズンの id と節）で残す。問題が節ごとに変わるので、
+  // ほかのデッキとは別の保存キーにし、記録の引っこしのコードには入れない（節が増えるとコードが長くなるため）。
+  // ほかのページからも書き換えられるので、読むときに「問題のある節の key と、0〜満点の整数」だけを残す。
+  const LKEY = 'senjutsu-master-live-best-v1';
+  const LROUNDS = new Map((window.LIVE || []).flatMap(lg => lg.seasons.flatMap(se =>
+    Object.entries(se.rounds).map(([no, r]) => [`${se.id}-${no}`, Math.min(r.q.length, TM.SESSION) * 2]))));
+  const loadLive = () => {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(LKEY)); } catch (e) { raw = null; }
+    const out = {};
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      LROUNDS.forEach((mx, rid) => { const v = raw[rid]; if (Number.isInteger(v) && v >= 0 && v <= mx) out[rid] = v; });
+    }
+    return out;
+  };
+  const saveLive = o => { try { localStorage.setItem(LKEY, JSON.stringify(o)); } catch (e) { /* 保存できない環境では無視 */ } };
   const seen = (D, id) => {
     if (!REC.includes(D)) return;
     const h = loadHist();
@@ -258,20 +274,21 @@
     const li = liveInfo(); if (!li) return '';
     const { L, done, ready, next, latest } = li;
     const head = ready ? `${L.name} 第${ready.md.no}節` : L.name;
+    const b = ready ? loadLive()[`${ready.se.id}-${ready.md.no}`] : null;
     const sub = ready
       ? (latest ? `${TM.dateLabel(ready.md.dates)}の試合から` : `第${done.md.no}節は分析の準備中。第${ready.md.no}節（${TM.dateLabel(ready.md.dates)}）から`)
       : done ? `第${done.md.no}節は分析の準備中です`
         : next ? `第${next.md.no}節（${TM.dateLabel(next.md.dates)}）が終わると始まります` : '分析を準備中です';
     return `<button class="lv lv-live" data-start="live"${ready ? '' : ' disabled'} aria-label="前節の一戦 ${esc(head)}">
-      <span class="lv-head"><span class="ico live" aria-hidden="true"><i></i></span><span class="lv-name">前節の一戦</span><span class="lv-title">${esc(head)}</span>${ready ? `<span class="lv-best"><b>${Math.min(ready.round.q.length, TM.SESSION)}</b>問</span>` : ''}</span>
+      <span class="lv-head"><span class="ico live" aria-hidden="true"><i></i></span><span class="lv-name">前節の一戦</span><span class="lv-title">${esc(head)}</span>${ready ? `<span class="lv-best"><small>最高</small><b>${b == null ? '—' : esc(b)}</b>/${Math.min(ready.round.q.length, TM.SESSION) * 2}</span>` : ''}</span>
       <span class="lv-who"><span class="lv-w">${esc(sub)}、非公式の分析</span></span>
     </button>`;
   }
-  // 前節の一戦を遊ぶときのデッキ（自己ベストは残さない）
+  // 前節の一戦を遊ぶときのデッキ（自己ベストは節ごとに loadLive／saveLive で残す。rid は節の key）
   function liveDeck() {
     const li = liveInfo(); if (!li || !li.ready) return null;
     const { L, ready } = li;
-    return { id: 'live', live: true, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
+    return { id: 'live', live: true, rid: `${ready.se.id}-${ready.md.no}`, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
   }
 
   // お気に入りクラブ: 選んだクラブを覚える（localStorage）。ほかのページからも書き換えられるので、知っている id だけを使う
@@ -511,6 +528,10 @@
       const best = loadBest(), prev = best[D.id];
       isNew = prev == null || sc > prev;
       if (isNew) { best[D.id] = sc; saveBest(best); }
+    } else if (D.live && LROUNDS.has(D.rid)) {
+      const lb = loadLive(), prev = lb[D.rid];
+      isNew = prev == null || sc > prev;
+      if (isNew) { lb[D.rid] = sc; saveLive(lb); }
     }
     const msg = D.live ? D.summary
       : pct >= 0.85

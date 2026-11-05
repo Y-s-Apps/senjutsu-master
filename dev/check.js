@@ -133,6 +133,13 @@ else {
 }
 
 // 前節の一戦: 日程と節ごとの問題
+// 前節の一戦の JSON に書かない語: J1（2026/27）のクラブの地名・略称・愛称。昇格・降格でクラブが替わったら足す（消さない）
+const REAL_NAMES = [
+  '鹿島', 'アントラーズ', '水戸', 'ホーリーホック', '浦和', 'レッズ', '柏', 'レイソル', '千葉', 'ジェフ',
+  'FC東京', '東京V', 'ヴェルディ', '町田', 'ゼルビア', '川崎', 'フロンターレ', '横浜', 'マリノス',
+  '清水', 'エスパルス', '名古屋', 'グランパス', '京都', 'サンガ', 'G大阪', 'ガンバ', 'C大阪', 'セレッソ', '大阪',
+  '神戸', 'ヴィッセル', '岡山', 'ファジアーノ', '広島', 'サンフレッチェ', '福岡', 'アビスパ', '長崎', 'ファーレン'
+];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const okDate = s => DATE.test(s) && new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) === s;
 if (!LIVE.length) err('LIVE', 'dev/src/live/ に日程がない');
@@ -163,6 +170,11 @@ LIVE.forEach(lg => {
       if (!Array.isArray(r.q) || r.q.length < 3) err(t, '問題は3問以上');
       for (const k of Object.keys(r)) if (!['summary', 'q'].includes(k)) err(t, '知らない項目', k);
       (r.q || []).forEach((q, qi) => checkQ(q, `${t} Q${qi + 1}`, { lv: true }));
+      // 実名を書かない（CLAUDE.md「名前の扱い」）: J1 のクラブの地名・愛称が文に入っていたら止める。
+      // 毎節の問題追加は人が見ずに動くので、ここで機械的に確かめる。選手名・監督名は一覧にできないので、作る側が守る。
+      const text = JSON.stringify(r);
+      const hit = REAL_NAMES.filter(w => text.includes(w));
+      if (hit.length) err(t, '実在のクラブの地名・愛称を書かない', hit.join('、'));
     });
   });
 });

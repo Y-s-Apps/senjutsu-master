@@ -16,6 +16,7 @@
 - 「記録の引っこし」が画面からはみ出す・Esc で閉じない → 失敗（記録なし・ありの両方）
 - 出題の履歴・お気に入りクラブ（localStorage）に壊れた値が入っていると動かない → 失敗
 - お気に入りクラブ: 選ぶ画面がはみ出す、選んだクラブがホームのカードに出ない、前回と3問以上重なる、10回で全問が出ない、自己ベストが残らない → 失敗
+- 前節の一戦: 節がホームのカードに出ない、壊れた自己ベスト（満点超え・小数・HTML）を読む、初回に「自己ベスト」が出ない、カードに点数が出ない → 失敗
 --shots を付けると dev/test/shots/ にスクリーンショットを保存する。
 必要なもの: pip install playwright && playwright install chromium
 """
@@ -227,6 +228,8 @@ def run(pg, tag, strict):
     # 出題の履歴は同じドメインのほかのページからも書き換えられる。壊れた値が入っていても動くこと（知らない id は無視される）
     pg.evaluate("() => localStorage.setItem('senjutsu-master-recent-v1', JSON.stringify({ basic: ['<img src=x onerror=alert(1)>', 5, null], club: 'x', team: {} }))")
     pg.evaluate("() => localStorage.setItem('senjutsu-master-fav-v1', '<img src=x onerror=alert(1)>')")
+    # 前節の一戦の自己ベスト: 満点より大きい・整数でない・知らない節・HTML は捨てる（カードは「—」のまま）
+    pg.evaluate("() => localStorage.setItem('senjutsu-master-live-best-v1', JSON.stringify(Object.assign({ x: '<img src=x onerror=alert(1)>', 'j1-2026-999': 3 }, ...(window.LIVE || []).flatMap(lg => lg.seasons.flatMap(se => Object.keys(se.rounds).map((no, i) => ({ [`${se.id}-${no}`]: i % 2 ? 2.5 : 99 })))))))")
     pg.reload()
     loaded.update(pg.evaluate(FONTS))
     r = pg.evaluate(OV)
@@ -250,13 +253,23 @@ def run(pg, tag, strict):
             fails.append((tag, rd['label'], 'ホームのカードに出ない', card))
             continue
         bad_breaks.update((tag, x) for x in pg.evaluate(BREAKS))
-        if rd['t'] / 1000 <= TODAY.timestamp() < rd['t'] / 1000 + 7 * 86400:
-            shot(pg, f'{tag}-home')
+        if pg.inner_text('[data-start="live"] .lv-best b') != '—':
+            fails.append((tag, rd['label'], '壊れた自己ベストを読んだ', card))
         pg.click('[data-start="live"]')
         ids = session(pg, tag, rd['label'], strict, checked, ('question', 'result'))
         if set(ids) != set(rd['ids'][:6]) and len(rd['ids']) <= 6:
             fails.append((tag, rd['label'], '節の問題がすべて出ない', ids))
+        # 自己ベスト: 初めて遊んだ節は「自己ベスト」が出て、ホームのカードにその点数が出る
+        got = pg.inner_text('.score b')
+        if not pg.query_selector('.score em'):
+            fails.append((tag, rd['label'], '初回なのに自己ベストが出ない'))
         pg.click('#toHome')
+        best = pg.inner_text('[data-start="live"] .lv-best b')
+        if best != got:
+            fails.append((tag, rd['label'], '自己ベストがカードに出ない', got, best))
+        bad_breaks.update((tag, x) for x in pg.evaluate(BREAKS))
+        if rd['t'] / 1000 <= TODAY.timestamp() < rd['t'] / 1000 + 7 * 86400:
+            shot(pg, f'{tag}-home')
     loaded.update(pg.evaluate(FONTS))
     return checked
 
