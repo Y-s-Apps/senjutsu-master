@@ -123,11 +123,13 @@ for (const [name, t, want] of cases) {
   ok(`前節: ${name} → ${want == null ? 'なし' : `第${want}節`}`, no(r.done) === want, no(r.done));
 }
 {
-  const r = TM.lastRound(J1, at('2026-10-30T12:00:00+09:00'));
+  // 実際の日程に、第12節だけ問題がある形で確かめる（毎節の自動追加で問題の節が増えても変わらないように）
+  const J12 = { ...J1, seasons: J1.seasons.map(se => ({ ...se, rounds: se.rounds[12] ? { 12: se.rounds[12] } : {} })) };
+  const r = TM.lastRound(J12, at('2026-10-30T12:00:00+09:00'));
   ok('今日は第12節の問題（準備中の表示なし）', no(r.ready) === 12 && r.latest && no(r.next) === 13);
-  const r2 = TM.lastRound(J1, at('2026-11-02T12:00:00+09:00'));
+  const r2 = TM.lastRound(J12, at('2026-11-02T12:00:00+09:00'));
   ok('第13節の分析がないときは、第12節の問題を使う', no(r2.done) === 13 && no(r2.ready) === 12 && !r2.latest);
-  const r3 = TM.lastRound(J1, at('2026-10-20T12:00:00+09:00'));
+  const r3 = TM.lastRound(J12, at('2026-10-20T12:00:00+09:00'));
   ok('問題のある節がまだ終わっていなければ、遊べない', no(r3.done) === 10 && r3.ready === null);
 }
 {
