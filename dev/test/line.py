@@ -10,8 +10,14 @@ LIFF SDK（static.line-scdn.net）はテストの中でまねる（本物は読�
   初期化が終わらない → 10秒で failed。どれでも SDK を待たずに画面が出て、遊べる          → でなければ失敗
 - LIFF ID を空にした版（このテストの中だけで作る。CSP のハッシュも作り直す）は SDK を読まない → 読んだら失敗
 - 外部への通信（SDK のほか）・CSP に止められたもの・ページのエラー・フォントが読めない    → 失敗
-- Android版LINE の下のすき間（--android-safe-area-inset-bottom: 48px）で #app の下があき、問題の画面と 412x780 のホームが
-  スクロールなしに収まる → でなければ失敗（390x700・360x620 のホームのはみ出しは注意だけ。HANDOFF §5）
+- Android版LINE の下のすき間（--android-safe-area-inset-bottom: 48px）で #app の下があき、412x780・390x700・360x620 の
+  ホームと問題の画面がスクロールなしに収まる。360・390px 幅で画面の高さ 548〜900px（使える高さ 488px 以上）のホームと
+  結果（「結果を送る」つき）もスクロールしない                                                  → でなければ失敗
+- 結果のシェア: LINE の中でシェアターゲットピッカーが使えるときだけ結果画面に「結果を送る」が出て、押すと
+  liff.shareTargetPicker に、カスタムシェアメッセージ（標準タイプ）の決まりどおりのバブル1つを渡す（画像は /share/、ボタンと
+  フッターの矢印はその場所の LIFF URL、前節の一戦はリーグ名なし）。送った・やめた・失敗でボタンの文字が変わる → でなければ失敗
+- 記録の引っこし: LINE の中で共有シートにファイルを渡せないときは「ファイルに保存」を出さない。渡せるときは共有シートを使い、
+  失敗しても「保存しました」と出さない。LINE の外ではいつも出る                                → でなければ失敗
 - ホーム画面版の index.html に line.js が入っていない                              → 入っていたら失敗
 --shots を付けると dev/test/shots/ に LINE版のスクリーンショットを保存する。
 """
@@ -72,15 +78,34 @@ STATE = """() => ({ line: document.documentElement.dataset.line, ch: document.do
   init: window.__initId || null })"""
 
 
-def stub(in_client=False, hang=False):
-    """LIFF SDK のまね。liff.init に渡された LIFF ID を window.__initId に残す"""
+def stub(in_client=False, hang=False, share=False, result='success'):
+    """LIFF SDK のまね。liff.init に渡された LIFF ID を window.__initId に、shareTargetPicker に渡したものを window.__sent に残す"""
     init = 'new Promise(() => {})' if hang else 'Promise.resolve()'
+    pick = {'success': "Promise.resolve({ status: 'success' })", 'cancel': 'Promise.resolve()',
+            'error': "Promise.reject(Object.assign(new Error('x'), { code: 'FORBIDDEN' }))"}[result]
     return (f"window.liff = {{ init: o => {{ window.__initId = o && o.liffId; return {init}; }},"
-            f" isInClient: () => {str(in_client).lower()} }};")
+            f" isInClient: () => {str(in_client).lower()},"
+            f" isApiAvailable: n => {str(share).lower()} && n === 'shareTargetPicker',"
+            f" shareTargetPicker: (m, o) => {{ window.__sent = m; window.__opts = o; return {pick}; }} }};")
 
 
-def page(browser, base, errors, sdk=None, w=390, h=700, inset=0):
-    pg = browser.new_page(viewport={'width': w, 'height': h})
+# 共有シート（Web Share のファイル）のまね。'none' は使えない（Android の LINE）、'ok' は渡せる、'fail' は渡せるはずが失敗する
+SHARE_SHEET = {
+    'none': "Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });",
+    'ok': "Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });"
+          "Object.defineProperty(navigator, 'share', { value: () => Promise.resolve(), configurable: true });",
+    'fail': "Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });"
+            "Object.defineProperty(navigator, 'share', { value: () => Promise.reject(new DOMException('no', 'NotAllowedError')), configurable: true });",
+}
+LINE_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36 Line/15.19.0/IAB'
+
+
+def page(browser, base, errors, sdk=None, w=390, h=700, inset=0, ua=None, sheet=None, best=False):
+    pg = browser.new_context(viewport={'width': w, 'height': h}, user_agent=ua).new_page() if ua else browser.new_page(viewport={'width': w, 'height': h})
+    if sheet:
+        pg.add_init_script(SHARE_SHEET[sheet])
+    if best:
+        pg.add_init_script("localStorage.setItem('tacdrill-best-v1', JSON.stringify({ basic: 10, team: 8, club: 7 }))")
     pg.on('pageerror', lambda e: errors.append(f'エラー: {e}'))
     pg.on('console', lambda m: errors.append(f'CSP: {m.text}') if 'Content Security Policy' in m.text else None)
     if inset:
@@ -109,6 +134,62 @@ def play_one(pg, tag):
         fails.append((tag, '問題の画面がスクロールする'))
 
 
+def to_result(pg, deck='team'):
+    """ホームからデッキを選び、6問に答えて結果の画面まで"""
+    pg.click(f'[data-start="{deck}"]')
+    while not pg.query_selector('.screen.result'):
+        pg.wait_for_selector('.opt')
+        pg.click('.opt >> nth=0')
+        pg.click('#next')
+
+
+def check_message(sent, opts, base, ch, tag):
+    """LINEミニアプリのカスタムシェアメッセージ（標準タイプ）の決まり（2026-11-20 に確認）"""
+    url = 'https://miniapp.line.me/' + IDS.get(ch, '')
+    probs = []
+    try:
+        if not isinstance(sent, list) or len(sent) != 1 or sent[0].get('type') != 'flex':
+            raise ValueError('Flex Message 1つでない')
+        m = sent[0]
+        if not (0 < len(m.get('altText', '')) <= 100):
+            probs.append('altText')
+        b = m['contents']
+        if b.get('type') != 'bubble':
+            probs.append('バブルでない（カルーセルは使わない）')
+        if b.get('hero') != {'type': 'image', 'url': base + '/share/hero.png', 'size': 'full', 'aspectMode': 'cover', 'aspectRatio': '20:13'}:
+            probs.append(('画像', b.get('hero')))
+        body = b['body']['contents']
+        t, sub, det, btns = body[0]['contents'][0], body[1]['contents'][0], body[2], body[3]
+        if not (t['size'] == 'lg' and t['color'] == '#000000' and t['weight'] == 'bold' and t['wrap'] is True and '点' in t['text']):
+            probs.append(('タイトル', t))
+        if not (sub['size'] == 'sm' and sub['color'] == '#999999' and sub['wrap'] is True):
+            probs.append(('サブタイトル', sub))
+        if not (det['layout'] == 'vertical' and det['spacing'] == 'sm' and det['margin'] == 'lg' and det['flex'] == 1 and 1 <= len(det['contents']) <= 10):
+            probs.append(('詳細', det))
+        for r in det['contents']:
+            k, v = r['contents']
+            if not (r['layout'] == 'horizontal' and k['color'] == '#555555' and k['flex'] == 20 and v['color'] == '#111111' and v['flex'] == 55 and k['wrap'] is False and v['wrap'] is False):
+                probs.append(('詳細の行', r))
+        bt = btns['contents']
+        if not (1 <= len(bt) <= 3 and bt[0]['style'] == 'primary' and bt[0]['height'] == 'md' and bt[0]['action'] == {'type': 'uri', 'label': '戦術マスターで遊ぶ', 'uri': url}):
+            probs.append(('ボタン', bt))
+        sep, row = b['footer']['contents']
+        icon, name, arrow = row['contents']
+        if sep != {'type': 'separator', 'color': '#f0f0f0'} or row['layout'] != 'horizontal' or icon['url'] != base + '/share/icon.png' \
+                or name['text'] != '戦術マスター' or arrow['url'] != 'https://vos.line-scdn.net/service-notifier/footer_go_btn.png' \
+                or arrow['action']['uri'] != url:
+            probs.append(('フッター', b['footer']))
+        import json
+        if len(json.dumps(b, ensure_ascii=False).encode()) > 10000:
+            probs.append('バブルが 10KB を超える')
+        if not (opts or {}).get('isMultiple'):
+            probs.append('isMultiple でない（グループや複数の友だちに送れない）')
+    except Exception as e:
+        probs.append(f'形がちがう: {e!r}')
+    for x in probs:
+        fails.append((tag, 'シェアのメッセージ', x))
+
+
 def wait_state(pg, want, tag, timeout=15000):
     try:
         pg.wait_for_function(f"() => document.documentElement.dataset.line === '{want}'", timeout=timeout)
@@ -117,7 +198,7 @@ def wait_state(pg, want, tag, timeout=15000):
 
 
 home = (ROOT / 'index.html').read_text(encoding='utf-8')
-if 'TMLine' in home or 'liffIds' in home:
+if 'liffIds' in home or 'shareTargetPicker' in home:  # app.js は window.TMLine を見るだけ
     fails.append(('home', 'ホーム画面版の index.html に line.js が入っている'))
 pages = [(OUT / d / 'index.html').read_bytes() for d in ('', 'review', 'dev')]
 if len(set(pages)) != 1:
@@ -137,7 +218,7 @@ with sync_playwright() as p:
         st = pg.evaluate(STATE)
         if st['ch'] != ch or st['init'] != IDS.get(ch) or not st['client']:
             fails.append((d, '場所・LIFF ID・LINE の中の判定が合わない', st))
-        if ch == 'dev' and st['mark'] != '"開発用 ready / LINE"':
+        if ch == 'dev' and not st['mark'].startswith('"開発用 ready / LINE / share:off / file:'):
             fails.append((d, '「開発用」の印と状態が出ない', st['mark']))
         if ch != 'dev' and st['mark'] not in ('none', 'normal', ''):
             fails.append((d, '開発用でないのに印が出る', st['mark']))
@@ -163,9 +244,8 @@ with sync_playwright() as p:
             fails.append((name, '開発用の印に失敗の合図が出ない', st['mark']))
         play_one(pg, name)
         pg.close()
-    # 3) Android版LINE の下のすき間（LINE が --android-safe-area-inset-bottom を入れる）。
-    #    412x780（ふつうの Android の LINE の中の大きさ）は収まらなければ失敗。390x700・360x620 のホームは、
-    #    詰める仕組み（page.html の max-height のメディアクエリ）が画面の高さで決まり、すき間を見ないので、いまは注意だけ
+    # 3) Android版LINE の下のすき間（LINE が --android-safe-area-inset-bottom を入れる）。詰め方は使える高さ（すき間を引いた高さ）で
+    #    決まる（page.html の @container scr）ので、すき間があっても収まる
     for w, h in ((412, 780), (390, 700), (360, 620)):
         pg = page(browser, base, errors, sdk=stub(in_client=True), w=w, h=h, inset=48)
         pg.goto(base + '/')
@@ -174,17 +254,94 @@ with sync_playwright() as p:
         if pad != '48px':
             fails.append((f'{w}x{h}', '#app の下が --android-safe-area-inset-bottom であかない', pad))
         ov = pg.evaluate(OV)
-        if ov > 0 and w == 412:
+        if ov > 0:
             fails.append((f'{w}x{h}', '下のすき間ありでホームがスクロールする', ov))
-        elif ov > 0:
-            print(f'  note {w}x{h} 下のすき間ありでホームが {ov}px はみ出す')
         if TAKE and w == 360:
             pg.screenshot(path=str(SHOTS / 'line-android-home.png'))
         play_one(pg, f'{w}x{h} すき間あり')
         pg.close()
+    # 3b) すき間 48px で高さを細かく変える: 使える高さ 488px 以上（画面の高さ 548px 以上）でホームと結果（「結果を送る」つき）が収まる
+    for w in (360, 390):
+        pg = page(browser, base, errors, sdk=stub(in_client=True, share=True), w=w, h=900, inset=48)
+        pg.goto(base + '/')
+        wait_state(pg, 'ready', f'{w} sweep')
+        pg.evaluate('document.fonts.ready')
+        for name in ('home', 'result'):
+            if name == 'result':
+                to_result(pg)
+                if not pg.query_selector('#share'):
+                    fails.append((f'{w} sweep', '結果に「結果を送る」がない'))
+            bad = [h for h in range(548, 901, 8) if not pg.set_viewport_size({'width': w, 'height': h}) and pg.evaluate(OV) > 0]
+            if bad:
+                fails.append((f'{w}px 幅 すき間あり', name, 'はみ出す高さ', bad))
+        pg.close()
+
+    # 4) 結果のシェア: 本番用と開発用で、その場所の LIFF URL のメッセージを送る。送った・やめた・失敗でボタンが変わる
+    for d, ch, result, want in (('/', 'prod', 'success', '送りました'), ('/dev/', 'dev', 'cancel', '結果を送る'), ('/dev/', 'dev', 'error', '送れませんでした')):
+        tag = f'シェア {d} {result}'
+        pg = page(browser, base, errors, sdk=stub(in_client=True, share=True, result=result))
+        pg.goto(base + d)
+        wait_state(pg, 'ready', tag)
+        to_result(pg)
+        if TAKE and result == 'success':
+            pg.screenshot(path=str(SHOTS / 'line-result-share.png'))
+        pg.click('#share')
+        pg.wait_for_function(f"() => document.getElementById('share').textContent.trim() === '{want}'", timeout=3000)
+        if result == 'success':
+            check_message(pg.evaluate('window.__sent'), pg.evaluate('window.__opts'), base, ch, tag)
+        pg.close()
+    # 前節の一戦: リーグ名を出さない（カードが押せるときだけ）
+    pg = page(browser, base, errors, sdk=stub(in_client=True, share=True))
+    pg.goto(base + '/dev/')
+    wait_state(pg, 'ready', 'シェア 前節')
+    if not pg.is_disabled('[data-start="live"]'):
+        to_result(pg, 'live')
+        pg.click('#share')
+        pg.wait_for_function("() => !!window.__sent")
+        import json
+        text = json.dumps(pg.evaluate('window.__sent'), ensure_ascii=False)
+        if 'J1' in text or '前節の一戦 第' not in text:
+            fails.append(('シェア 前節', 'リーグ名が入っているか、前節の一戦の節がない'))
+    pg.close()
+    # 「結果を送る」が出ない: LINE の外・シェアターゲットピッカーがオフ・SDK が読めない
+    for name, sdk in (('LINE の外', stub(share=True)), ('ピッカーがオフ', stub(in_client=True)), ('SDK が読めない', 'abort')):
+        pg = page(browser, base, errors, sdk=sdk)
+        pg.goto(base + '/dev/')
+        wait_state(pg, 'failed' if sdk == 'abort' else 'ready', name)
+        to_result(pg)
+        if pg.query_selector('#share'):
+            fails.append((name, '「結果を送る」が出る'))
+        pg.close()
+
+    # 5) 記録の引っこし: LINE の中のファイル保存
+    for name, ua, sheet, has_save, msg in (
+            ('LINE の中・共有シートなし', LINE_UA, 'none', False, None),
+            ('LINE の中・共有シートあり', LINE_UA, 'ok', True, '"ファイル"に保存'),
+            ('LINE の中・共有シートが失敗', LINE_UA, 'fail', True, 'ここではファイルを保存できませんでした'),
+            ('LINE の外', None, 'none', True, None)):
+        pg = page(browser, base, errors, sdk=stub(in_client=ua is not None), ua=ua, sheet=sheet, best=True)
+        pg.goto(base + '/dev/')
+        wait_state(pg, 'ready', name)
+        pg.click('#moveOpen')
+        save = pg.query_selector('#mvSave')
+        if bool(save) != has_save:
+            fails.append((name, '「ファイルに保存」が' + ('出ない' if has_save else '出る')))
+        if not has_save and 'ghost' in (pg.get_attribute('#mvCopy', 'class') or ''):
+            fails.append((name, '「コードをコピー」が主のボタンになっていない'))
+        if ua and 'LINE の中' not in pg.inner_text('.sheet-sub'):
+            fails.append((name, '説明が LINE の中の文になっていない'))
+        if save and msg:
+            save.click()
+            pg.wait_for_function("() => document.getElementById('mvMsg').textContent.includes('ファイル')", timeout=3000)
+            got = pg.inner_text('#mvMsg')
+            if msg not in got:
+                fails.append((name, '保存のメッセージ', got))
+        if TAKE and name == 'LINE の中・共有シートなし':
+            pg.screenshot(path=str(SHOTS / 'line-move.png'))
+        pg.close()
     srv.shutdown()
 
-    # 4) LIFF ID を空にした版: SDK を読まずに off のまま遊べる（SDK を読んだら「外部への通信」になる）
+    # 6) LIFF ID を空にした版: SDK を読まずに off のまま遊べる（SDK を読んだら「外部への通信」になる）
     tmp = pathlib.Path(tempfile.mkdtemp())
     shutil.copytree(OUT, tmp / 'line')
     for d in ('', 'review', 'dev'):

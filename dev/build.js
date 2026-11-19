@@ -203,6 +203,11 @@ fs.mkdirSync(path.join(LINE_OUT, 'fonts'));
 for (const f of FONTS) fs.copyFileSync(path.join(ROOT, 'fonts', f), path.join(LINE_OUT, 'fonts', f));
 fs.copyFileSync(path.join(ROOT, 'favicon-32.png'), path.join(LINE_OUT, 'favicon-32.png'));
 fs.cpSync(path.join(ROOT, 'licenses'), path.join(LINE_OUT, 'licenses'), { recursive: true });
+// 結果のシェア（line.js）のメッセージに出す画像。LINE のサーバーが https://<このサイト>/share/… を読みに来る。
+// hero.png は dev/icons/make_share.py が描く（1000×650）。icon.png はアプリのアイコン（フッターの小さい丸）
+fs.mkdirSync(path.join(LINE_OUT, 'share'));
+fs.copyFileSync(path.join(__dirname, 'icons', 'share-hero.png'), path.join(LINE_OUT, 'share', 'hero.png'));
+fs.copyFileSync(path.join(ROOT, 'icon-192.png'), path.join(LINE_OUT, 'share', 'icon.png'));
 // Cloudflare Pages の HTTP ヘッダー（meta の CSP では書けないもの）。ほかのサイトの枠（iframe）に入れさせない。
 // うちのこ日和と同じく、まず開発用だけに入れ、2026-11-20 に iPhone の LINE で開発用がひらける（ready / LINE）のを確かめてから全部へ広げた
 fs.writeFileSync(path.join(LINE_OUT, '_headers'), `/*

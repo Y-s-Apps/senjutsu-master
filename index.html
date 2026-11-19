@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qmJQbRuN1M5Jd1mrlyQxevM6CWGXbFDXzJNRsYN6YRA=' 'sha256-Gqero5YKJNYLzMyImHd6L3Cc6gTurPB3mkoToZsSHFY=' 'sha256-ay/XV4zgJkiKo2yYSsSH262dcuOx++9jQznRs0dM8KI=' 'sha256-yIHGj69sxJFiNPkakEzwjY/QJExQiEWQYhPjbePV3RI=' 'sha256-X3oPtZNh9ki+wvy03Qy7YypgXz66lsSNpzqdcXB+bKE=' 'sha256-D0EJKdRqLQ9jwJnXDMUlRLRXrLP5sKMyOrWVAKSPX9w=' 'sha256-RcQHg2KW69qoWDcycmEpWp1xb6IphLkbAqS0nbAHPaA=' 'sha256-U8fIy+TQ+zlYTGGHCAKboxl0MldeKbeY5hSnPg9T9ow=' 'sha256-ft2hqqVulrT5IoaET8WzvLoRr779S84eNjZff7wanH8=' 'sha256-k0/BBKMxIOJm5poNbeqIhEJ09bVq6txYgPuCUb+BVcc='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qmJQbRuN1M5Jd1mrlyQxevM6CWGXbFDXzJNRsYN6YRA=' 'sha256-Gqero5YKJNYLzMyImHd6L3Cc6gTurPB3mkoToZsSHFY=' 'sha256-ay/XV4zgJkiKo2yYSsSH262dcuOx++9jQznRs0dM8KI=' 'sha256-yIHGj69sxJFiNPkakEzwjY/QJExQiEWQYhPjbePV3RI=' 'sha256-X3oPtZNh9ki+wvy03Qy7YypgXz66lsSNpzqdcXB+bKE=' 'sha256-D0EJKdRqLQ9jwJnXDMUlRLRXrLP5sKMyOrWVAKSPX9w=' 'sha256-RcQHg2KW69qoWDcycmEpWp1xb6IphLkbAqS0nbAHPaA=' 'sha256-U8fIy+TQ+zlYTGGHCAKboxl0MldeKbeY5hSnPg9T9ow=' 'sha256-Gaqt23+qn0AVB+ipVgH8JZxVF1ykt1SVfoNAGhuW2ac=' 'sha256-k0/BBKMxIOJm5poNbeqIhEJ09bVq6txYgPuCUb+BVcc='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="戦術ボードの状況を読んで次のプレーを選び、選手の動きと解説で理由を学ぶサッカー戦術クイズ。初級・中級・上級（指導者向け）の3段階。">
 <meta name="theme-color" content="#0B0B0B">
@@ -66,6 +66,12 @@ h1, h2, h3, p { margin: 0; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .screen { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+/* 背の低い画面の詰め方は「使える高さ」で決める: 画面（.screen）の高さは #app の中の高さで、ホーム画面のアプリの safe-area や
+   Android の LINE の下のすき間（LINE で開いたときの #app の padding）をすでに引いてある。だから画面の高さのメディアクエリではなく、
+   .screen をコンテナにしたコンテナクエリ（@container scr）で書く。#app をコンテナにすると、記録の引っこしの重ね
+   （.sheet-bg、position: fixed）が #app の中に閉じこめられる（size のコンテナは fixed の基準になる）ので、#app にはしない。
+   コンテナ自身（.screen.home など）にはコンテナクエリが効かないので、詰めるものは .screen の中の要素に書く */
+.screen { container: scr / size; }
 /* 線のアイコン: どれも 16px・同じ線の幅 */
 .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -76,8 +82,9 @@ button { font: inherit; color: inherit; }
 .eyebrow { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
 
 /* ホーム */
-.home { gap: clamp(14px, 2.6vh, 24px); justify-content: center; overflow-y: auto; }
-.h-side { display: flex; flex-direction: column; gap: clamp(12px, 2vh, 16px); }
+.home { justify-content: center; overflow-y: auto; }
+.home > .levels { margin-top: clamp(14px, 2.6cqh, 24px); }
+.h-side { display: flex; flex-direction: column; gap: clamp(12px, 2cqh, 16px); }
 .h-top h1 { font: var(--w-brand) clamp(30px, 7.6vw, 58px)/1.15 var(--f-brand); margin: 0 0 8px; text-wrap: balance; }
 .lead { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 30em; }
 .key { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; font-size: 12.5px; color: var(--muted); }
@@ -150,7 +157,8 @@ button { font: inherit; color: inherit; }
 
 /* 記録の引っこし（ホームの上に重ねる。スクロールさせずに1画面に収める） */
 .sheet-bg { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(0, 0, 0, .66);
-  padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  container: sheet / size; }
 .sheet { width: min(440px, 100%); max-height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 14px; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sheet-head h2 { font: var(--w-disp) 18px/1.3 var(--f-disp); }
@@ -239,7 +247,13 @@ button { font: inherit; color: inherit; }
 .play .acts .btn:last-child { flex: 1 1 auto; }
 
 /* 結果 */
-.result { gap: clamp(12px, 2.2vh, 20px); justify-content: center; overflow-y: auto; max-width: 620px; width: 100%; margin-inline: auto; }
+.result { justify-content: center; overflow-y: auto; max-width: 620px; width: 100%; margin-inline: auto; }
+/* 結果の中の間（.result はコンテナなので、間は子のほうに書く。cqh は使える高さの 1%） */
+.screen.result > * + * { margin-top: clamp(12px, 2.2cqh, 20px); }
+.r-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.r-top .eyebrow { min-width: 0; }
+/* 結果を送る（LINE の中だけ）。点数の右上に小さく（2026-11-20 の候補 S2） */
+.r-share { flex: none; padding: 7px 12px; font-size: 13px; }
 .score { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .score b { font: var(--w-brand) clamp(56px, 12vh, 96px)/1 var(--f-brand); font-variant-numeric: tabular-nums; }
 .score span { font: 500 24px var(--f-mono); color: var(--faint); }
@@ -260,9 +274,11 @@ button { font: inherit; color: inherit; }
 @media (max-width: 380px) {
   .lv-n { display: none; }
 }
-/* 背の低い画面: ホームとフィードバックの文字・余白を少し詰める */
-@media (max-height: 660px) {
-  .home { gap: 10px; }
+/* 背の低い画面: 使える高さ（.screen の高さ。上の「詰め方」）でホームとフィードバックの文字・余白を詰める。
+   段1（668px 未満）: 360px 幅でホームの2行目が折り返しても収まる高さ（664px）より低いとき。以前は画面の高さ 660px 以下で、
+   ホーム画面のアプリでも 661〜688px ではみ出していた。段2（590px 未満）は下。 */
+@container scr (max-height: 667.98px) or ((max-width: 300px) and (max-height: 747.98px)) {
+  .home > .levels { margin-top: 10px; }
   .h-side { gap: 8px; }
   .h-top h1 { font-size: 27px; margin: 0 0 4px; }
   .lead { font-size: 13px; line-height: 1.5; }
@@ -273,13 +289,45 @@ button { font: inherit; color: inherit; }
   .lv-title { font-size: 16px; }
   .move-link { font-size: 12px; padding: 4px 0 0; }
   .panel { gap: 6px; }
-  .sheet { gap: 5px; padding: 10px 14px 12px; }
-  .sheet-sub { font-size: 12px; line-height: 1.5; }
 }
-@media (max-height: 700px) {
+/* 解説の文字（以前の画面の高さ 700px 以下。使える高さでは 676px 以下。safe-area もすき間もないときは前と同じ） */
+@container scr (max-height: 676px) {
   .tabbody { font-size: 13.5px; line-height: 1.52; gap: 4px; }
   .oline { font-size: 12.5px; }
   .sit { font-size: 13px; line-height: 1.55; }
+}
+/* 結果: 使える高さ 620px 未満で詰める（6問の結果と、LINE の中の「結果を送る」が入る高さ。360px 幅で 488px まで収まる） */
+@container scr (max-height: 619.98px) {
+  .screen.result > * + * { margin-top: 10px; }
+  .score { margin-top: 2px; }
+  .score b { font-size: clamp(48px, 11cqh, 64px); }
+  .msg { margin-top: 4px; font-size: 14px; line-height: 1.55; }
+  .rlist li { padding: 5px 0; }
+}
+@container scr (max-height: 539.98px) {
+  .score b { font-size: 48px; }
+  .rlist li { padding: 3px 0; }
+  .rt { line-height: 1.3; }
+  .rt b { font-size: 13.5px; }
+  .msg { font-size: 13px; line-height: 1.5; }
+  .result .acts .btn, .r-share { padding-block: 7px; }
+}
+/* 記録の引っこし: 重ね（.sheet-bg）の中の高さで（以前の画面の高さ 660px 以下。中の高さでは 636px 以下） */
+@container sheet (max-height: 636px) {
+  .sheet { gap: 5px; padding: 10px 14px 12px; }
+  .sheet-sub { font-size: 12px; line-height: 1.5; }
+}
+/* 段2（使える高さ 590px 未満。320px 幅は 636px 未満）: iPhone SE の LINE や小さい Android。アプリの説明文と「味方はいつも上へ」を隠し、
+   カードを少し詰める（2026-11-20 の候補 A）。カードの2行目（だれ向けか・非公式の分析・架空の名前）は残す。
+   360px 幅で使える高さ 488px まで収まる。それより低いと、ホームだけは縦にスクロールする（.home の overflow-y） */
+@container scr (max-height: 589.98px) or ((max-width: 300px) and (max-height: 635.98px)) {
+  .lead { display: none; }
+  .h-top h1 { font-size: 24px; margin: 0; }
+  .foot > span:first-child { display: none; }
+  .h-side { gap: 6px; }
+  .home > .levels { margin-top: 8px; }
+  .levels { gap: 6px; }
+  .lv { padding: 6px 12px 7px; }
 }
 
 /* 横長の画面: ボードを左、問題を右に並べる */
@@ -293,6 +341,7 @@ button { font: inherit; color: inherit; }
   .opt { font-size: 15px; padding: 10px 14px; }
   .tabbody { font-size: 15px; }
   .home { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: center; align-items: center; column-gap: 48px; }
+  .home > .levels { margin-top: 0; }
 }
 
 /* ピッチ内 SVG */
@@ -5036,8 +5085,13 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     hint: '<path d="M6.1 13.9h3.8"/><path d="M8 2a4 4 0 0 0-2.3 7.3c.5.4.8.9.8 1.5v.6h3v-.6c0-.6.3-1.1.8-1.5A4 4 0 0 0 8 2Z"/>',
     move: '<path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/>',
     board: '<rect x="1.75" y="3" width="12.5" height="10" rx="1.5"/><path d="M8 3v10"/><circle cx="8" cy="8" r="2"/>',
-    close: '<path d="M4 4l8 8M12 4l-8 8"/>'
+    close: '<path d="M4 4l8 8M12 4l-8 8"/>',
+    send: '<path d="M14.25 1.75 7 9"/><path d="M14.25 1.75 9.75 14.25 7 9 1.75 6.25Z"/>',
+    check: '<path d="M3 8.5l3.25 3.25L13 4.75"/>'
   };
+  // LINE で開くページ（dev/out/line）だけにある window.TMLine（line.js）。結果のシェアと、記録の引っこしのファイル保存に使う。
+  // ホーム画面のアプリ・アーティファクトにはない
+  const LN = () => window.TMLine || null;
   const icon = n => `<svg class="i" viewBox="0 0 16 16" aria-hidden="true">${IC[n]}</svg>`;
   const f = n => Math.round(n * 100) / 100;
   const maxOf = D => Math.min(D.q.length, TM.SESSION) * 2;
@@ -5314,7 +5368,7 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
   function liveDeck() {
     const li = liveInfo(); if (!li || !li.ready) return null;
     const { L, ready } = li;
-    return { id: 'live', live: true, rid: `${ready.se.id}-${ready.md.no}`, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
+    return { id: 'live', live: true, rid: `${ready.se.id}-${ready.md.no}`, no: ready.md.no, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
   }
 
   // お気に入りクラブ: 選んだクラブを覚える（localStorage）。ほかのページからも書き換えられるので、知っている id だけを使う
@@ -5565,10 +5619,16 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
         : pct >= 0.6 ? '原則はつかめています。「要注意」の問題を見直すとさらに伸びます。'
           : '原則をひとつずつ。解説を読んで、もう一度挑戦してみましょう。';
     const nx = nextDeck(D);
+    // LINE の中: 結果を LINE のトーク・グループへ送る（line.js の share。送れる環境のときだけ、点数の右上にボタンを出す。2026-11-20 の候補 S2）。
+    // 送るのはコースの名前・点数・ベストの数だけ。前節の一戦はリーグ名を出さない（メッセージはアプリの外へ出て、アプリの名前と並ぶので）
+    const nb = S.ans.filter(a => a && a.sc === 2).length;
+    const course = D.live ? `前節の一戦 第${D.no}節` : D.fav ? `お気に入りクラブ ${D.title}` : LV.includes(D) ? `${D.name} ${D.title}` : D.title;
+    S.share = { course, sc, mx, isNew, best: nb, total: S.qs.length };
+    const canShare = !!(LN() && typeof LN().canShare === 'function' && LN().canShare());
     app.innerHTML = `
     <div class="screen result">
       <div class="r-head">
-        <p class="eyebrow">${esc(D.short)} · ${esc(D.live || D.fav ? D.name : D.title)}</p>
+        <div class="r-top"><p class="eyebrow">${esc(D.short)} · ${esc(D.live || D.fav ? D.name : D.title)}</p>${canShare ? `<button class="btn ghost r-share" id="share">${icon('send')}<span>結果を送る</span></button>` : ''}</div>
         <div class="score"><b>${sc}</b><span>/${mx}</span>${isNew ? '<em><i></i>自己ベスト</em>' : ''}</div>
         <p class="msg${D.live ? ' msg-live' : ''}">${esc(msg)}</p>
       </div>
@@ -5585,6 +5645,18 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
       </div>
     </div>`;
     phrase(app);
+  }
+  // 結果を送る（LINE の中だけ）。送れたら「送りました」、やめたら元のまま、送れなければ「送れませんでした」（もう一度押せる）
+  async function shareResult(btn) {
+    const ln = LN();
+    if (!ln || !S.share || btn.disabled) return;
+    btn.disabled = true;
+    let r = 'error';
+    try { r = await ln.share(S.share); } catch (e) { /* 送れなかった */ }
+    if (!btn.isConnected) return;
+    btn.disabled = false;
+    btn.innerHTML = r === 'sent' ? `${icon('check')}<span>送りました</span>`
+      : `${icon('send')}<span>${r === 'cancel' ? '結果を送る' : '送れませんでした'}</span>`;
   }
 
   // 遊び始める: 問題を選び（直近に出たものを避け、場面がばらけるように）、選択肢を並べ替える
@@ -5653,10 +5725,13 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
         catch (e) { return e && e.code === 'declined' ? 'declined' : 'unavailable'; }
       }
     }
+    // LINE の中（LIFF ブラウザ）は download の指定が使えない（押しても何も起きないのに「保存しました」と出てしまう）ので、共有シートだけ
+    const inLine = !!(LN() && typeof LN().inLine === 'function' && LN().inLine());
     try {
       const file = new File([text], MOVE_FILE, { type: 'text/plain' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: '戦術マスターの記録' }); return 'shared'; }
-    } catch (e) { if (e && e.name === 'AbortError') return 'declined'; }
+    } catch (e) { if (e && e.name === 'AbortError') return 'declined'; if (inLine) return 'unavailable'; }
+    if (inLine) return 'unavailable';
     try {
       const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
       const a = document.createElement('a'); a.href = url; a.download = MOVE_FILE;
@@ -5681,15 +5756,21 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
   let moveReturn = null;
   function openMove() {
     const best = loadBest(), has = Object.keys(best).length > 0, code = makeCode(best);
+    // LINE の中でファイルを保存できない（共有シートが使えない）ときは「ファイルに保存」を出さず、コードのコピーだけにする
+    const ln = LN(), inLine = !!(ln && typeof ln.inLine === 'function' && ln.inLine());
+    const fileOk = !inLine || (typeof ln.canSaveFile === 'function' && ln.canSaveFile());
+    const sub = inLine
+      ? `自己ベストは、この端末の LINE の中だけに保存されています（ホーム画面のアプリや Safari とは別）。別の端末やホーム画面のアプリへは、${fileOk ? 'ファイルか' : ''}コードで移せます。`
+      : '自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。';
     moveReturn = document.activeElement;
     app.insertAdjacentHTML('beforeend', `
     <div class="sheet-bg" id="mv">
       <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="mvT">
         <div class="sheet-head"><h2 id="mvT">記録の引っこし</h2><button class="link sheet-x" id="mvClose" aria-label="閉じる">${icon('close')}</button></div>
-        <p class="sheet-sub">自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。</p>
+        <p class="sheet-sub">${esc(sub)}</p>
         <p class="mv-now" id="mvNow">${bestLine(best)}</p>
         <h3 class="sheet-h">持っていく</h3>
-        <div class="mv-row"><button class="btn" id="mvSave"${has ? '' : ' disabled'}>ファイルに保存</button><button class="btn ghost" id="mvCopy"${has ? '' : ' disabled'}>コードをコピー</button></div>
+        <div class="mv-row">${fileOk ? `<button class="btn" id="mvSave"${has ? '' : ' disabled'}>ファイルに保存</button>` : ''}<button class="btn${fileOk ? ' ghost' : ''}" id="mvCopy"${has ? '' : ' disabled'}>コードをコピー</button></div>
         <p class="mv-out" id="mvOut" role="textbox" aria-readonly="true" aria-label="記録のコード" data-empty="まだ記録がありません">${has ? esc(code) : ''}</p>
         <h3 class="sheet-h">受け取る</h3>
         <div class="mv-row"><label class="btn ghost mv-file">ファイルを選ぶ<input type="file" id="mvFile" accept=".txt,text/plain"></label></div>
@@ -5702,7 +5783,8 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     const msg = t => { const m = sh.querySelector('#mvMsg'); m.textContent = t; phrase(m); };
     sh.querySelector('#mvClose').addEventListener('click', closeMove);
     sh.addEventListener('click', e => { if (e.target === sh) closeMove(); });
-    sh.querySelector('#mvSave').addEventListener('click', async () => {
+    const save = sh.querySelector('#mvSave');
+    if (save) save.addEventListener('click', async () => {
       const text = `戦術マスターの記録（自己ベスト）\n戦術マスターのホームの「記録の引っこし」→「ファイルを選ぶ」でこのファイルを選ぶと、記録を移せます。\n${makeCode(loadBest())}\n`;
       const r = await saveFile(text);
       msg(r === 'shared' ? `共有メニューで「"ファイル"に保存」を選ぶと、${MOVE_FILE} として残ります。`
@@ -5727,7 +5809,8 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
       saveBest(now);
       sh.querySelector('#mvNow').innerHTML = bestLine(now);
       const out = sh.querySelector('#mvOut'); out.textContent = makeCode(now);
-      sh.querySelector('#mvSave').disabled = false; sh.querySelector('#mvCopy').disabled = false;
+      if (save) save.disabled = false;
+      sh.querySelector('#mvCopy').disabled = false;
       msg(`記録を移しました（${up.join('、')}）。`);
     };
     sh.querySelector('#mvTake').addEventListener('click', () => take(sh.querySelector('#mvIn').value));
@@ -5737,7 +5820,7 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
       if (file.size > MOVE_MAX) return msg(MOVE_ERR.big);
       try { take(await file.text()); } catch (err) { msg(MOVE_ERR.noprefix); }
     });
-    sh.querySelector(has ? '#mvSave' : '#mvFile').focus();
+    sh.querySelector(has ? (save ? '#mvSave' : '#mvCopy') : '#mvFile').focus();
   }
   function closeMove() {
     const sh = document.getElementById('mv'); if (!sh) return;
@@ -5763,6 +5846,7 @@ window.LIVE = [{"id":"j1","name":"J1","seasons":[{"id":"j1-2026","season":"2026/
     if (id === 'replay') return play(cur());
     if (id === 'retry') return start(S.deck.live ? liveDeck() || S.deck : S.deck);
     if (id === 'nextLv') return start(nextDeck(S.deck));
+    if (id === 'share') return shareResult(btn);
     if (id === 'hintBtn') {
       const h = document.getElementById('hint'); h.hidden = !h.hidden;
       btn.setAttribute('aria-pressed', String(!h.hidden));

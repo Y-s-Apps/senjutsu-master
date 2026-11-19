@@ -20,6 +20,9 @@ OLD_KEYS = {'tacdrill-best-v1'}  # 旧名のまま残している保存キー（
 ALLOWED_URLS = {'https://github.com/google/budoux', 'http://www.w3.org/2000/svg', 'http://www.w3.org/1999/xlink'}
 # LINE版（dev/src/line.js・dev/out/line/）だけの例外: LIFF SDK のエッジパスを読み込む（v2 の最新版。古い版に固定しない）
 LIFF_SDK = 'https://static.line-scdn.net/liff/edge/2/sdk.js'
+# line.js に書いてよい URL: SDK と、結果のシェアのメッセージの中身（ページは読まない。LINE が読む）と、決まりの出典の注記
+LINE_URLS = {LIFF_SDK, 'https://miniapp.line.me/', 'https://vos.line-scdn.net/service-notifier/footer_go_btn.png',
+             'https://developers.line.biz/ja/docs/line-mini-app/develop/share-messages/'}
 LINE_NET = {'s.async = true; s.src = CFG.sdk;'}  # line.js で通信してよい行（SDK の script を足すところだけ）
 LINE_CSP_HOSTS = {'script-src': {'https://static.line-scdn.net'}, 'img-src': {'https://*.line-scdn.net'},
                   'connect-src': {'https://*.line.me', 'https://*.line-scdn.net'}, 'frame-src': {'https://*.line.me'}}
@@ -128,9 +131,9 @@ def audit_external():
     for f in ['index.html', 'sw.js', 'manifest.webmanifest', 'dev/dist/artifact.html', 'dev/src/page.html'] + src_files():
         for u in re.findall(r'https?://[^\s"\'`<>()\\]+', read(f)):
             u = u.rstrip('.,;')
-            if u not in ALLOWED_URLS and not (f == 'dev/src/line.js' and u == LIFF_SDK):
+            if u not in ALLOWED_URLS and not (f == 'dev/src/line.js' and u in LINE_URLS):
                 found.setdefault(u, set()).add(f)
-    say('NG' if found else 'OK', '公開物と source に外部の URL' + (': ' + '; '.join(f'{u}（{", ".join(sorted(fs))}）' for u, fs in found.items()) if found else 'なし（BudouX の出典の注記と SVG の名前空間、LINE版の line.js の LIFF SDK だけ）'))
+    say('NG' if found else 'OK', '公開物と source に外部の URL' + (': ' + '; '.join(f'{u}（{", ".join(sorted(fs))}）' for u, fs in found.items()) if found else 'なし（BudouX の出典の注記と SVG の名前空間、LINE版の line.js の LIFF SDK・シェアのメッセージの URL・決まりの出典だけ）'))
 
     net = []
     for f in src_files():
@@ -208,7 +211,7 @@ def audit_line():
         probs.append(f'src などの付いた script タグ: {page.script_attrs}')
     if 'serviceWorker' in html or 'rel="manifest"' in html:
         probs.append('Service Worker か manifest が入っている')
-    if 'TMLine' in read('index.html'):
+    if 'liffIds' in read('index.html') or 'shareTargetPicker' in read('index.html'):  # app.js は window.TMLine を見るだけ
         probs.append('ホーム画面版の index.html に line.js が入っている')
     hdr = open(os.path.join(out, '_headers'), encoding='utf-8').read() if os.path.isfile(os.path.join(out, '_headers')) else ''
     if 'nosniff' not in hdr or 'no-referrer' not in hdr:

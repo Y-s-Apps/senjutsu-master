@@ -14,6 +14,7 @@
 - CSP に止められたものがある            → 失敗
 - fonts/ のフォントが読み込めない       → 失敗
 - 「記録の引っこし」が画面からはみ出す・Esc で閉じない → 失敗（記録なし・ありの両方）
+- 360・390・412px 幅で、画面の高さ 512〜900px（使える高さ 488px 以上）のどこかでホームか結果がスクロールする → 失敗
 - 出題の履歴・お気に入りクラブ（localStorage）に壊れた値が入っていると動かない → 失敗
 - お気に入りクラブ: 選ぶ画面がはみ出す、選んだクラブがホームのカードに出ない、前回と3問以上重なる、10回で全問が出ない、自己ベストが残らない → 失敗
 - 前節の一戦: 節がホームのカードに出ない、壊れた自己ベスト（満点超え・小数・HTML）を読む、初回に「自己ベスト」が出ない、カードに点数が出ない → 失敗
@@ -274,6 +275,43 @@ def run(pg, tag, strict):
     return checked
 
 
+def ranges(hs, step):
+    out = []
+    for h in hs:
+        if out and h - out[-1][1] <= step:
+            out[-1][1] = h
+        else:
+            out.append([h, h])
+    return ', '.join(f'{a}〜{b}px' if a != b else f'{a}px' for a, b in out)
+
+
+def sweep(browser, errors):
+    """背の低い画面: 画面の高さ 512〜900px（使える高さ 488px 以上）で、ホームと結果がスクロールしない。
+    詰め方は使える高さで段が切り替わる（page.html の @container scr）ので、360・390・412px 幅で高さを細かく変えて、
+    段の境目の前後にはみ出しが残っていないかを見る（以前は 661〜688px でホームがはみ出していた）"""
+    for w in (360, 390, 412):
+        pg = browser.new_page(viewport={'width': w, 'height': 900})
+        pg.on('pageerror', lambda e: errors.append(str(e)))
+        pg.route('**/*', lambda r: (errors.append(f'外部への通信: {r.request.url}'), r.abort()) if not r.request.url.startswith(BASE) else r.continue_())
+        pg.clock.set_fixed_time(TODAY)
+        pg.goto(BASE + 'index.html')
+        pg.evaluate('document.fonts.ready')
+        for name, step in (('home', 4), ('result', 8)):
+            if name == 'result':
+                pg.click('[data-start="coach"]')
+                while not pg.query_selector('.screen.result'):
+                    pg.click('.opt[data-k="A"]')
+                    pg.click('#next')
+            bad = []
+            for h in range(512, 901, step):
+                pg.set_viewport_size({'width': w, 'height': h})
+                if pg.evaluate(OV)['page'] > 0:
+                    bad.append(h)
+            if bad:
+                fails.append(('sweep', f'{w}px 幅', name, 'はみ出す高さ', ranges(bad, step)))
+        pg.close()
+
+
 loaded = set()
 with sync_playwright() as p:
     browser = p.chromium.launch()
@@ -285,6 +323,8 @@ with sync_playwright() as p:
         pg.route('**/*', lambda r: (errors.append(f'外部への通信: {r.request.url}'), r.abort()) if not r.request.url.startswith(BASE) else r.continue_())
         n = len(run(pg, tag, strict))
         print(f'{tag}: {n} 問を確認')
+    sweep(browser, errors)
+    print('sweep: 360・390・412px 幅、高さ 512〜900px のホームと結果を確認')
     browser.close()
 server.shutdown()
 

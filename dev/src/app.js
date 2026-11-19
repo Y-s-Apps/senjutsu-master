@@ -29,8 +29,13 @@
     hint: '<path d="M6.1 13.9h3.8"/><path d="M8 2a4 4 0 0 0-2.3 7.3c.5.4.8.9.8 1.5v.6h3v-.6c0-.6.3-1.1.8-1.5A4 4 0 0 0 8 2Z"/>',
     move: '<path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/>',
     board: '<rect x="1.75" y="3" width="12.5" height="10" rx="1.5"/><path d="M8 3v10"/><circle cx="8" cy="8" r="2"/>',
-    close: '<path d="M4 4l8 8M12 4l-8 8"/>'
+    close: '<path d="M4 4l8 8M12 4l-8 8"/>',
+    send: '<path d="M14.25 1.75 7 9"/><path d="M14.25 1.75 9.75 14.25 7 9 1.75 6.25Z"/>',
+    check: '<path d="M3 8.5l3.25 3.25L13 4.75"/>'
   };
+  // LINE で開くページ（dev/out/line）だけにある window.TMLine（line.js）。結果のシェアと、記録の引っこしのファイル保存に使う。
+  // ホーム画面のアプリ・アーティファクトにはない
+  const LN = () => window.TMLine || null;
   const icon = n => `<svg class="i" viewBox="0 0 16 16" aria-hidden="true">${IC[n]}</svg>`;
   const f = n => Math.round(n * 100) / 100;
   const maxOf = D => Math.min(D.q.length, TM.SESSION) * 2;
@@ -307,7 +312,7 @@
   function liveDeck() {
     const li = liveInfo(); if (!li || !li.ready) return null;
     const { L, ready } = li;
-    return { id: 'live', live: true, rid: `${ready.se.id}-${ready.md.no}`, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
+    return { id: 'live', live: true, rid: `${ready.se.id}-${ready.md.no}`, no: ready.md.no, short: `${L.name} 第${ready.md.no}節`, name: '前節の一戦', title: `${L.name} 第${ready.md.no}節`, summary: ready.round.summary, q: ready.round.q };
   }
 
   // お気に入りクラブ: 選んだクラブを覚える（localStorage）。ほかのページからも書き換えられるので、知っている id だけを使う
@@ -558,10 +563,16 @@
         : pct >= 0.6 ? '原則はつかめています。「要注意」の問題を見直すとさらに伸びます。'
           : '原則をひとつずつ。解説を読んで、もう一度挑戦してみましょう。';
     const nx = nextDeck(D);
+    // LINE の中: 結果を LINE のトーク・グループへ送る（line.js の share。送れる環境のときだけ、点数の右上にボタンを出す。2026-11-20 の候補 S2）。
+    // 送るのはコースの名前・点数・ベストの数だけ。前節の一戦はリーグ名を出さない（メッセージはアプリの外へ出て、アプリの名前と並ぶので）
+    const nb = S.ans.filter(a => a && a.sc === 2).length;
+    const course = D.live ? `前節の一戦 第${D.no}節` : D.fav ? `お気に入りクラブ ${D.title}` : LV.includes(D) ? `${D.name} ${D.title}` : D.title;
+    S.share = { course, sc, mx, isNew, best: nb, total: S.qs.length };
+    const canShare = !!(LN() && typeof LN().canShare === 'function' && LN().canShare());
     app.innerHTML = `
     <div class="screen result">
       <div class="r-head">
-        <p class="eyebrow">${esc(D.short)} · ${esc(D.live || D.fav ? D.name : D.title)}</p>
+        <div class="r-top"><p class="eyebrow">${esc(D.short)} · ${esc(D.live || D.fav ? D.name : D.title)}</p>${canShare ? `<button class="btn ghost r-share" id="share">${icon('send')}<span>結果を送る</span></button>` : ''}</div>
         <div class="score"><b>${sc}</b><span>/${mx}</span>${isNew ? '<em><i></i>自己ベスト</em>' : ''}</div>
         <p class="msg${D.live ? ' msg-live' : ''}">${esc(msg)}</p>
       </div>
@@ -578,6 +589,18 @@
       </div>
     </div>`;
     phrase(app);
+  }
+  // 結果を送る（LINE の中だけ）。送れたら「送りました」、やめたら元のまま、送れなければ「送れませんでした」（もう一度押せる）
+  async function shareResult(btn) {
+    const ln = LN();
+    if (!ln || !S.share || btn.disabled) return;
+    btn.disabled = true;
+    let r = 'error';
+    try { r = await ln.share(S.share); } catch (e) { /* 送れなかった */ }
+    if (!btn.isConnected) return;
+    btn.disabled = false;
+    btn.innerHTML = r === 'sent' ? `${icon('check')}<span>送りました</span>`
+      : `${icon('send')}<span>${r === 'cancel' ? '結果を送る' : '送れませんでした'}</span>`;
   }
 
   // 遊び始める: 問題を選び（直近に出たものを避け、場面がばらけるように）、選択肢を並べ替える
@@ -646,10 +669,13 @@
         catch (e) { return e && e.code === 'declined' ? 'declined' : 'unavailable'; }
       }
     }
+    // LINE の中（LIFF ブラウザ）は download の指定が使えない（押しても何も起きないのに「保存しました」と出てしまう）ので、共有シートだけ
+    const inLine = !!(LN() && typeof LN().inLine === 'function' && LN().inLine());
     try {
       const file = new File([text], MOVE_FILE, { type: 'text/plain' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: '戦術マスターの記録' }); return 'shared'; }
-    } catch (e) { if (e && e.name === 'AbortError') return 'declined'; }
+    } catch (e) { if (e && e.name === 'AbortError') return 'declined'; if (inLine) return 'unavailable'; }
+    if (inLine) return 'unavailable';
     try {
       const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
       const a = document.createElement('a'); a.href = url; a.download = MOVE_FILE;
@@ -674,15 +700,21 @@
   let moveReturn = null;
   function openMove() {
     const best = loadBest(), has = Object.keys(best).length > 0, code = makeCode(best);
+    // LINE の中でファイルを保存できない（共有シートが使えない）ときは「ファイルに保存」を出さず、コードのコピーだけにする
+    const ln = LN(), inLine = !!(ln && typeof ln.inLine === 'function' && ln.inLine());
+    const fileOk = !inLine || (typeof ln.canSaveFile === 'function' && ln.canSaveFile());
+    const sub = inLine
+      ? `自己ベストは、この端末の LINE の中だけに保存されています（ホーム画面のアプリや Safari とは別）。別の端末やホーム画面のアプリへは、${fileOk ? 'ファイルか' : ''}コードで移せます。`
+      : '自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。';
     moveReturn = document.activeElement;
     app.insertAdjacentHTML('beforeend', `
     <div class="sheet-bg" id="mv">
       <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="mvT">
         <div class="sheet-head"><h2 id="mvT">記録の引っこし</h2><button class="link sheet-x" id="mvClose" aria-label="閉じる">${icon('close')}</button></div>
-        <p class="sheet-sub">自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。</p>
+        <p class="sheet-sub">${esc(sub)}</p>
         <p class="mv-now" id="mvNow">${bestLine(best)}</p>
         <h3 class="sheet-h">持っていく</h3>
-        <div class="mv-row"><button class="btn" id="mvSave"${has ? '' : ' disabled'}>ファイルに保存</button><button class="btn ghost" id="mvCopy"${has ? '' : ' disabled'}>コードをコピー</button></div>
+        <div class="mv-row">${fileOk ? `<button class="btn" id="mvSave"${has ? '' : ' disabled'}>ファイルに保存</button>` : ''}<button class="btn${fileOk ? ' ghost' : ''}" id="mvCopy"${has ? '' : ' disabled'}>コードをコピー</button></div>
         <p class="mv-out" id="mvOut" role="textbox" aria-readonly="true" aria-label="記録のコード" data-empty="まだ記録がありません">${has ? esc(code) : ''}</p>
         <h3 class="sheet-h">受け取る</h3>
         <div class="mv-row"><label class="btn ghost mv-file">ファイルを選ぶ<input type="file" id="mvFile" accept=".txt,text/plain"></label></div>
@@ -695,7 +727,8 @@
     const msg = t => { const m = sh.querySelector('#mvMsg'); m.textContent = t; phrase(m); };
     sh.querySelector('#mvClose').addEventListener('click', closeMove);
     sh.addEventListener('click', e => { if (e.target === sh) closeMove(); });
-    sh.querySelector('#mvSave').addEventListener('click', async () => {
+    const save = sh.querySelector('#mvSave');
+    if (save) save.addEventListener('click', async () => {
       const text = `戦術マスターの記録（自己ベスト）\n戦術マスターのホームの「記録の引っこし」→「ファイルを選ぶ」でこのファイルを選ぶと、記録を移せます。\n${makeCode(loadBest())}\n`;
       const r = await saveFile(text);
       msg(r === 'shared' ? `共有メニューで「"ファイル"に保存」を選ぶと、${MOVE_FILE} として残ります。`
@@ -720,7 +753,8 @@
       saveBest(now);
       sh.querySelector('#mvNow').innerHTML = bestLine(now);
       const out = sh.querySelector('#mvOut'); out.textContent = makeCode(now);
-      sh.querySelector('#mvSave').disabled = false; sh.querySelector('#mvCopy').disabled = false;
+      if (save) save.disabled = false;
+      sh.querySelector('#mvCopy').disabled = false;
       msg(`記録を移しました（${up.join('、')}）。`);
     };
     sh.querySelector('#mvTake').addEventListener('click', () => take(sh.querySelector('#mvIn').value));
@@ -730,7 +764,7 @@
       if (file.size > MOVE_MAX) return msg(MOVE_ERR.big);
       try { take(await file.text()); } catch (err) { msg(MOVE_ERR.noprefix); }
     });
-    sh.querySelector(has ? '#mvSave' : '#mvFile').focus();
+    sh.querySelector(has ? (save ? '#mvSave' : '#mvCopy') : '#mvFile').focus();
   }
   function closeMove() {
     const sh = document.getElementById('mv'); if (!sh) return;
@@ -756,6 +790,7 @@
     if (id === 'replay') return play(cur());
     if (id === 'retry') return start(S.deck.live ? liveDeck() || S.deck : S.deck);
     if (id === 'nextLv') return start(nextDeck(S.deck));
+    if (id === 'share') return shareResult(btn);
     if (id === 'hintBtn') {
       const h = document.getElementById('hint'); h.hidden = !h.hidden;
       btn.setAttribute('aria-pressed', String(!h.hidden));
