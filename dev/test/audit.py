@@ -18,6 +18,11 @@ REPO = 'Y-s-Apps/senjutsu-master'
 PREFIX = 'senjutsu-master-'
 OLD_KEYS = {'tacdrill-best-v1'}  # 旧名のまま残している保存キー（変えると記録が消える）
 ALLOWED_URLS = {'https://github.com/google/budoux', 'http://www.w3.org/2000/svg', 'http://www.w3.org/1999/xlink'}
+# LINE版（dev/src/line.js・dev/out/line/）だけの例外: LIFF SDK のエッジパスを読み込む（v2 の最新版。古い版に固定しない）
+LIFF_SDK = 'https://static.line-scdn.net/liff/edge/2/sdk.js'
+LINE_NET = {'s.async = true; s.src = CFG.sdk;'}  # line.js で通信してよい行（SDK の script を足すところだけ）
+LINE_CSP_HOSTS = {'script-src': {'https://static.line-scdn.net'}, 'img-src': {'https://*.line-scdn.net'},
+                  'connect-src': {'https://*.line.me', 'https://*.line-scdn.net'}, 'frame-src': {'https://*.line.me'}}
 AUTHOR_NAMES = {'Claude'}
 AUTHOR_EMAILS = {'noreply@anthropic.com'}
 SECRET_RE = re.compile(rb'(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|gh[ousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|'
@@ -123,16 +128,17 @@ def audit_external():
     for f in ['index.html', 'sw.js', 'manifest.webmanifest', 'dev/dist/artifact.html', 'dev/src/page.html'] + src_files():
         for u in re.findall(r'https?://[^\s"\'`<>()\\]+', read(f)):
             u = u.rstrip('.,;')
-            if u not in ALLOWED_URLS:
+            if u not in ALLOWED_URLS and not (f == 'dev/src/line.js' and u == LIFF_SDK):
                 found.setdefault(u, set()).add(f)
-    say('NG' if found else 'OK', '公開物と source に外部の URL' + (': ' + '; '.join(f'{u}（{", ".join(sorted(fs))}）' for u, fs in found.items()) if found else 'なし（BudouX の出典の注記と SVG の名前空間だけ）'))
+    say('NG' if found else 'OK', '公開物と source に外部の URL' + (': ' + '; '.join(f'{u}（{", ".join(sorted(fs))}）' for u, fs in found.items()) if found else 'なし（BudouX の出典の注記と SVG の名前空間、LINE版の line.js の LIFF SDK だけ）'))
 
     net = []
     for f in src_files():
         for i, line in enumerate(read(f).splitlines(), 1):
             if re.search(r'\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|\bimport\s*\(|new\s+Worker|importScripts|<iframe|\.src\s*=', line):
-                net.append(f'{f}:{i}')
-    say('NG' if net else 'OK', '通信する API（fetch・XHR・WebSocket・sendBeacon・import()・Worker・src の書き換え）' + (': ' + ', '.join(net) if net else 'なし'))
+                if not (f == 'dev/src/line.js' and line.strip() in LINE_NET):
+                    net.append(f'{f}:{i}')
+    say('NG' if net else 'OK', '通信する API（fetch・XHR・WebSocket・sendBeacon・import()・Worker・src の書き換え）' + (': ' + ', '.join(net) if net else 'なし（LINE版の line.js が LIFF SDK を読み込む1行だけ）'))
 
     page = Page()
     page.feed(read('index.html'))
@@ -161,9 +167,55 @@ def audit_external():
         probs.append(f'src などの付いた script タグ: {other}')
     say('NG' if probs else 'OK', f'CSP: ' + ('; '.join(probs) if probs else f"default-src 'none'、script は埋め込んだ {len(bodies)} 個のハッシュだけ、外部のホストなし（style の 'unsafe-inline' は style 属性のため。script は動かせない）"))
 
+    audit_line()
+
     bud = read('dev/src/budoux.js')
     ver = re.search(r'BudouX\s*v?([0-9.]+)', bud)
     say('要確認', f'同梱の BudouX は {ver.group(1) if ver else "版不明"}。新しい版に安全面の修正がないかを調べる（フォントは make_fonts.py が元の SHA-256 を確かめる）')
+
+
+def audit_line():
+    """LINE版（dev/out/line/。node dev/build.js が作る）: 3か所が同じ、CSP の外部ホストは LINE の決まったものだけ、SW・manifest なし"""
+    out = os.path.join(ROOT, 'dev/out/line')
+    if not os.path.isfile(os.path.join(out, 'index.html')):
+        say('読めない', 'LINE版（dev/out/line/）がない。node dev/build.js のあとに流す')
+        return
+    pages = [open(os.path.join(out, d, 'index.html'), 'rb').read() for d in ('', 'review', 'dev')]
+    html = pages[0].decode('utf-8')
+    page = Page()
+    page.feed(html)
+    page.close()
+    probs = []
+    if len(set(pages)) != 1:
+        probs.append('本番用・審査用・開発用の index.html が同じでない')
+    csp = page.csp or ''
+    dirs = {d.split()[0]: d.split()[1:] for d in csp.split(';') if d.strip()}
+    if not csp.startswith("default-src 'none'"):
+        probs.append("default-src 'none' でない")
+    for k, v in dirs.items():
+        hosts = {x for x in v if re.search(r'https?:|\*|data:|blob:', x)}
+        if hosts - LINE_CSP_HOSTS.get(k, set()):
+            probs.append(f'{k} に決まっていない外部のホスト: {sorted(hosts - LINE_CSP_HOSTS.get(k, set()))}')
+    if re.search(r'unsafe-eval|wasm', csp) or any('unsafe' in x for x in dirs.get('script-src', [])):
+        probs.append('unsafe-eval か、script の unsafe を許している')
+    if dirs.get('base-uri') != ["'none'"] or dirs.get('form-action') != ["'none'"]:
+        probs.append("base-uri・form-action が 'none' でない")
+    hashes = set(re.findall(r"'sha256-([A-Za-z0-9+/=]+)'", csp))
+    actual = {base64.b64encode(hashlib.sha256(b.encode()).digest()).decode() for b in page.scripts}
+    if hashes != actual:
+        probs.append(f'ハッシュと埋め込みが一致しない（CSP {len(hashes)}・script {len(actual)}）')
+    if page.script_attrs:
+        probs.append(f'src などの付いた script タグ: {page.script_attrs}')
+    if 'serviceWorker' in html or 'rel="manifest"' in html:
+        probs.append('Service Worker か manifest が入っている')
+    if 'TMLine' in read('index.html'):
+        probs.append('ホーム画面版の index.html に line.js が入っている')
+    hdr = open(os.path.join(out, '_headers'), encoding='utf-8').read() if os.path.isfile(os.path.join(out, '_headers')) else ''
+    if 'nosniff' not in hdr or 'no-referrer' not in hdr:
+        probs.append('_headers に nosniff・no-referrer がない')
+    say('NG' if probs else 'OK', 'LINE版: ' + ('; '.join(probs) if probs else
+        f"3か所が同じ、CSP は default-src 'none'・script は埋め込んだ {len(page.scripts)} 個のハッシュと static.line-scdn.net（LIFF SDK）、"
+        "通信は *.line.me・*.line-scdn.net だけ、SW・manifest なし、_headers あり"))
 
 
 # ---- ③ Service Worker -----------------------------------------------------

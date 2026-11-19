@@ -5,6 +5,7 @@
 GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジトリ `Y-s-Apps/senjutsu-master` の `main` ブランチ直下をそのまま配信）
 作者の個人の GitHub アカウント名は、公開されるファイル・URL・コミットに出さない（組織 Y-s-Apps で公開している）
 同じゲームは Claude のアーティファクトとしても公開している: https://claude.ai/artifact/LvjMNJxWTMbJyGaVZTi5nt
+LINE版（LINEミニアプリ、サーバーなし）を準備中（2026-11-19〜）。計画書は https://claude.ai/artifact/MXkTtDDzPqQNJm6ZSBYq1N 、仕組みは下の「LINE版」。
 進め方・ユーザーの好み・経緯・やり残しは `HANDOFF.md`（Claude のプロジェクト機能で開発を続けるためのメモ。プロジェクトの指示の原文もここ）。
 
 ## Layout
@@ -16,13 +17,15 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 - `dev/src/logic.js` — 出題の仕組み（`window.TM`）: 問題の選び方 `pick`（お気に入りクラブは `pickLoose`）・選択肢の並べ替え `prep`・前節の決め方 `lastRound`・回答後のボールの動かし方 `motion`（下の「回答後の動き」）。画面に触らない関数だけ（node でも動く）。
 - `dev/src/live/<リーグ>-<開幕年>/` — 前節の一戦のデータ（JSON）。`schedule.json`（日程）と `<節>.json`（その節の分析と問題）。`dev/livedata.js` が読み、build.js が `window.LIVE` にして埋め込む。
 - `dev/src/budoux.js` — BudouX 0.6.4（Apache-2.0）の日本語パーサを1ファイルにまとめたもの。改行位置を決めるためだけに使う。手で編集しない。
-- `dev/build.js` — script（`SCRIPT_FILES` に並べたもの。`live.js` だけはファイルではなく live/ の JSON から作る。HTML は正規表現で読まず、決まった `<script src>` の文字列を置き換える）をインライン化して、直下の `index.html`（PWA 用 head・CSP・service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html`（フォントを data: で埋め込んだ1ファイル）を書き出す。ソースに `fonts/` にない文字が出てきたらビルドを止めるので、`python3 dev/fonts/make_fonts.py` を実行してからビルドし直す（要 `pip install fonttools brotli`）。
+- `dev/src/line.js` — LINE版だけに入る script（LIFF の初期化とゲストの形。下の「LINE版」）。ホーム画面版・アーティファクト版には入らない。
+- `dev/build.js` — script（`SCRIPT_FILES` に並べたもの。`live.js` だけはファイルではなく live/ の JSON から作る。HTML は正規表現で読まず、決まった `<script src>` の文字列を置き換える）をインライン化して、直下の `index.html`（PWA 用 head・CSP・service worker 登録を足した完全な HTML）・`sw.js`（バージョン＝日本時間の yyyymmddHHMM）・`dev/dist/artifact.html`（フォントを data: で埋め込んだ1ファイル）・`dev/out/line/`（LINE版。git に入れない。Cloudflare Pages がビルドして公開）を書き出す。ソースに `fonts/` にない文字が出てきたらビルドを止めるので、`python3 dev/fonts/make_fonts.py` を実行してからビルドし直す（要 `pip install fonttools brotli`）。
 - `dev/check.js` — 問題データの確認（型・ID・ベストの数・座標・文に記号 A/B/C を書いていないか・日程の形・前節の一戦に J1 のクラブの地名や愛称がないか・お気に入りクラブの id と色・play の形など。誤りがあれば終了コード 1）。回答後の動きも app.js と同じ計算で追い、選手の重なりやボールが選手の上を通るところを注意（note）で出す。
 - `dev/live-status.js` — 前節の一戦: いま（`--now` で日時を指定できる）の「前節」と、その節の問題ファイルがあるかを出す（`--json` で1行の JSON）。読むだけ。毎節の自動追加が最初に使う。
 - `dev/test/logic.js` — 出題の仕組みの確認（node）。並べ替えのかたより・前回の問題が続けて出ない・ひと回りで全問・お気に入りクラブ（前回との重なりは2問まで・組み合わせが毎回変わる）・前節の判定（水曜開催・別日の試合・end・分析のない節・シーズンの切れ目）。
 - `dev/test/fit.py` — Playwright でローカルの Web サーバーから開き（`fonts/` の実フォントで測る）、レベルと名将の戦術は全問が出るまで続けて遊び、お気に入りクラブは選ぶ画面から9クラブを順に選んで遊び（ホームのカード・自己ベストも確かめる）、前節の一戦は問題のある節ごとに日時を合わせて遊ぶ（壊れた自己ベストを読まないこと・初回の「自己ベスト」・カードの点数も確かめる）。全問・全タブと選ぶ画面について、1画面に収まっているか（縦横どちらもスクロールなし）、行頭に助詞・句読点・閉じ括弧・ハイフンの後の数字が来ていないか、前回の問題が続けて出ないか、選択肢が並べ替えられているか、外部への通信・CSP 違反がないか、フォントが読み込めたかを確認（`--shots` でスクショ）。
 - `dev/test/move.py` — 「記録の引っこし」の確認。ファイル・コードでの持ち出しと読み込み（お気に入りクラブの記録も）、高いほうだけの更新、切れた・書き換えた・範囲外・HTML を仕込んだ・大きすぎるものを読まないこと。
 - `dev/test/offline.py` — サイトのコピーを `/senjutsu-master/` の位置で配信し、service worker を登録して、オフライン・別ページや 404 を開いたあと・サーバーの 500・新しい版への切り替えでも正しく動くかを確認。引数にフォルダを渡すと、そのビルドを試せる。
+- `dev/test/line.py` — LINE版の確認。`dev/out/line/` をサーバーのいちばん上から開き、本番用・審査用・開発用の3か所でホームと1問目が動くか、LIFF ID が空なら SDK を読まないか、「開発用」の印、外部への通信・CSP 違反・フォント、Android版LINE の下のすき間（48px）を確かめる。LIFF ID を入れた版をテストの中で作り（CSP のハッシュも作り直す）、SDK を読める（LINE の中・外）・読めない・初期化が終わらない、のどれでもゲストで遊べるかも見る。
 - `dev/test/audit.py` — セキュリティ診断のうち機械的に確かめられるもの（下の「セキュリティ診断」）。読むだけで何も書き換えない。OK／NG／要確認／読めない で出し、NG があれば終了コード 1。
 - `fonts/` — アプリで使う文字だけを収めたフォント（woff2）。`dev/fonts/make_fonts.py` が google/fonts の決まったコミットから元のフォントを取り（SHA-256 を確認、`dev/fonts/.cache/` は git に入れない）、サブセットを作る。作った文字の一覧は `dev/fonts/chars.txt`。内部名は TM Display / TM Gothic / TM Mono（IBM Plex の予約フォント名「Plex」を使わないため）。手で編集しない。
 - `licenses/` — 同梱している BudouX（Apache-2.0）とフォント（OFL 1.1）のライセンス本文。アイコンの字形に使った Zen Old Mincho（OFL 1.1）も。
@@ -30,12 +33,23 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 
 ## 変更の流れ
 1. `dev/src/` を編集
-2. `node dev/check.js` → `node dev/build.js` → 画面を変えたら `python3 dev/test/fit.py`、出題の仕組み（logic.js）や日程を変えたら `node dev/test/logic.js`、service worker（`build.js` の sw 部分）を変えたら `python3 dev/test/offline.py`、自己ベストや記録の引っこしを変えたら `python3 dev/test/move.py`
+2. `node dev/check.js` → `node dev/build.js` → 画面を変えたら `python3 dev/test/fit.py`、出題の仕組み（logic.js）や日程を変えたら `node dev/test/logic.js`、service worker（`build.js` の sw 部分）を変えたら `python3 dev/test/offline.py`、自己ベストや記録の引っこしを変えたら `python3 dev/test/move.py`、`build.js`・`line.js`・画面の高さに関わるところを変えたら `python3 dev/test/line.py`
 3. コミットの前に `python3 dev/test/audit.py`（数秒）。NG が出たら直す
 4. コミットして `main` に push（Pages が1〜2分で更新）。アーティファクトも合わせるなら `dev/dist/artifact.html` を上記 URL へ publish。
 - main には ruleset（`main`）があり、削除と強制 push を禁止している（pull request は不要なので、普通の push は通る）。秘密の値（トークン・鍵など）を含む push は push protection に止められる。push のたびに code scanning（CodeQL）が走る。
 - service worker はページ本体（`./` と `index.html`）をネット優先で取得するので、push 後は再読み込みで新しい版になる。保存するのは正常な応答（200）だけで、ネットが使えない・エラーのときは保存済みのページを出す。アイコン・フォントなど CORE のファイルは保存済み優先。それ以外（`licenses/` などの別ページ）には関わらず、保存もしない。新しい版が有効になると古い版の保存データ（`senjutsu-master-<版>`）を消す。
 - y-s-apps.github.io は組織 Y-s-Apps の Pages すべて（senjutsu-master・uchinoko-biyori・shinpan-dojo・kuratsuku・kamiashi）が共有する1つのオリジン。localStorage・IndexedDB・Cache Storage・service worker は、組織のほかの Pages（とくに `y-s-apps.github.io` という名前のリポジトリを作るとサイト全体の直下になる）からも触れる。保存キーとキャッシュ名はアプリ名で始め、ほかのアプリのものを消さない（2026-10-29 に5つとも確認済み）。ほかの人が書いたものを組織の Pages で公開しない。
+
+## LINE版（LINEミニアプリ。2026-11-19〜準備中）
+- 決めたこと（計画書 https://claude.ai/artifact/MXkTtDDzPqQNJm6ZSBYq1N 3章）: **サーバーなし**（LIFF だけのゲストの形。記録はホーム画面版と同じ localStorage）、結果のシェアはリリース前に入れる、無料・広告なしで未認証のまま出し、認証審査は個人事業主になってから。ホーム画面版・アーティファクト版は残す。型はうちのこ日和（`Y-s-Apps/uchinoko-biyori` の `src/js_line.js`・`src/build.sh`。読むだけで変えない）。
+- 置き場所: Cloudflare Pages のこのアプリ専用のプロジェクト（`senjutsu-master.pages.dev` の予定）。ビルドコマンド `node dev/build.js`、出力 `dev/out/line`。main に push すると LINE版も作り直される（毎節の自動追加の push も）。y-s-apps.github.io には置かない（組織のほかの Pages と保存を共有するため）。
+- `dev/out/line/` の中身: 同じ `index.html` を `/`（本番用）・`/review/`（審査用）・`/dev/`（開発用）に置く。LINE Developers の「ウェブアプリ設定」のエンドポイントURLもこの3つ。`fonts/`・`favicon-32.png`・`licenses/`・`_headers` はいちばん上だけで、ページはフォントを `/fonts/…` で指す。Service Worker・manifest・apple-touch-icon は入れない。
+- ページはホーム画面版と同じ head と script に `line.js` を足したもの。ホーム画面版の `index.html` とアーティファクト版は1バイトも変えない（変えたら build.js かテストの誤り）。
+- `line.js`: LIFF ID（`liffIds` の prod・review・dev。秘密ではない）を、ひらいた場所（`/dev/`・`/review/`・それ以外）でえらぶ。空ならその場所では SDK を読まない。SDK はエッジパス `https://static.line-scdn.net/liff/edge/2/sdk.js`（版を固定しない。v2.20.0〜v2.31.0 は脆弱性があり 2026-11-24 ごろ利用制限）。読めない・10秒で初期化できない・LINE の外のブラウザでも、画面は app.js が先に出しているので、ふつうの Web 版として遊べる。状態は `<html data-line="off|loading|ready|failed" data-line-ch="prod|review|dev" data-line-client="1">`。`window.TMLine` にまとめる（シェアなどがあとで使う）。LINE の ID・トークン・プロフィールは使わず、どこへも送らない（Scope は openid だけ。起動時に `getProfile()` などを呼ばない）。
+- `line.js` は `usedChars()` に入れていない（いまは画面に文字を出さない）。画面に出す文を足すときは `usedChars()` に入れ、足りない文字があれば `make_fonts.py` で作り直す。
+- LINE版の CSP（build.js が作る `<meta>`）: script は埋め込みのハッシュと `https://static.line-scdn.net`、通信は `'self'`・`https://*.line.me`・`https://*.line-scdn.net`、img は `'self'`・`https://*.line-scdn.net`、frame は `https://*.line.me`。それ以外は全部禁止（`audit.py` が決まったホストだけかを確かめる）。`_headers` は全部に nosniff・no-referrer、`/dev/*` だけに `frame-ancestors 'none'`・`X-Frame-Options: DENY`（うちのこ日和と同じく、iPhone の LINE で開発用がひらけるのを確かめてから全部へ広げる）。
+- 画面の高さ: Android版LINE（edge-to-edge）は下のナビゲーションバーの分を `--android-safe-area-inset-bottom` で渡すので、LINE版だけ `#app` と `.sheet-bg` の下を `max(12px, env(safe-area-inset-bottom), var(--android-safe-area-inset-bottom))` にする（:root には書かない）。page.html の「背の低い画面」の詰め方は画面の高さ（`max-height: 660px`）で決まり、このすき間を見ないので、390×700・360×620 ですき間 48px のときホームが数px はみ出す（`line.py` は注意だけ。HANDOFF §5）。
+- 開発用（`/dev/`）だけ右上に小さく「開発用」と出す（build.js の LINE版の head の CSS）。
 
 ## 出題の仕組み（`dev/src/logic.js`）
 - 1回に6問（`TM.SESSION`）。自己ベストの満点は 6×2=12 点のまま（問題が増えても記録は引き継がれる）。
@@ -127,7 +141,7 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
   - 保存は、アーティファクトではホストの保存確認（`downloads` の capability。publish のときに `capabilities: {downloads: true}` を宣言する）、ホーム画面のアプリ・Safari では共有シート（「"ファイル"に保存」）、どちらもなければ通常のダウンロード。
   - 読み込んだものは信用しない: 4096 文字・バイトまで、NFKC と空白の除去のあと形と確認用の文字を確かめ、`cleanBest()` を通す。今の記録より高いレベルだけを更新する（読み込みで記録は下がらない）。メッセージは textContent で出す。
   - レベル・クラブを足すときは、id（英小文字だけ）をコードにそのまま使うので、既存の id を変えない。`dev/test/move.py` で確かめる。
-- **外部へ通信しない**。フォントは `fonts/`、script はすべてインライン。`index.html` の CSP（`dev/build.js` が作る `<meta>`）は外部への通信をすべて禁止し、script は埋め込んだもののハッシュだけを許す。外部の URL を読み込むと、ビルドが止まり（page.html）、`fit.py` も失敗する。GitHub Pages はヘッダーを設定できないので、`frame-ancestors` などヘッダーでしか効かない指定は使えない。アーティファクトはホスト側の仕組みがあるので CSP を入れない。
+- **外部へ通信しない**。フォントは `fonts/`、script はすべてインライン。`index.html` の CSP（`dev/build.js` が作る `<meta>`）は外部への通信をすべて禁止し、script は埋め込んだもののハッシュだけを許す。外部の URL を読み込むと、ビルドが止まり（page.html）、`fit.py` も失敗する。GitHub Pages はヘッダーを設定できないので、`frame-ancestors` などヘッダーでしか効かない指定は使えない。アーティファクトはホスト側の仕組みがあるので CSP を入れない。例外は LINE版だけで、LIFF SDK（static.line-scdn.net）と LINE の API（*.line.me）への通信を許す（上の「LINE版」）。
 - **innerHTML に差し込む文は `esc()` を通す**（問題データ・自己ベストを含めてすべて）。座標・点数・記号 A/B/C はそのまま SVG や class に入るので、`dev/check.js` がデータの型（文は文字列、座標は数値、記号は A/B/C の順）を確かめる。HTML のタグを文に書かない。
 - コミットの末尾に付ける行は、そのセッションで指示されたものに従う。
 
@@ -136,7 +150,7 @@ GitHub Pages で公開: https://y-s-apps.github.io/senjutsu-master/ （リポジ
 1. 対象を決める: 前回の診断の記録を足したコミット（`git log -1 --format=%h -G'セキュリティ診断' -- HANDOFF.md`）から HEAD まで。
 2. アーティファクトを Artifact の read で読み、見出しで公開範囲が「自分だけ」・capability が `downloads` だけかを見る。保存されたファイルを次に渡す。
 3. `python3 dev/test/audit.py --since <1のコミット> --artifact <2のファイル>`。NG は直す。「要確認」は人が読んで判断し、「読めない」はユーザーに確かめてもらう。⑤のリポジトリの設定が「読めない」ときは、先にリポジトリを push 権限でセッションに加えてから流し直す（加えていないと API が 403 を返す）。
-4. テストをすべて流す: `node dev/check.js`・`node dev/test/logic.js`・`python3 dev/test/fit.py`・`python3 dev/test/move.py`・`python3 dev/test/offline.py`。
+4. テストをすべて流す: `node dev/check.js`・`node dev/test/logic.js`・`python3 dev/test/fit.py`・`python3 dev/test/move.py`・`python3 dev/test/offline.py`・`python3 dev/test/line.py`。
 5. 差分を読む（audit.py の代わりにならないところ）:
    - ① 変わった script の、HTML を差し込む場所に入る値（`esc()` を通るか、数値・決まった文字列だけか）、style・class・SVG の属性に入る値（データなら check.js が型・形を確かめるか。色は `#RRGGBB`、id は英小文字）、新しい保存データ（キーはアプリ名で始め、読むときに知っている値だけ残す）、外から読み込むもの（記録の引っこしなど。大きさ・形を確かめてから使う）。
    - ② 新しい依存（ライブラリ・フォント・画像）がないか。入れたら版を固定し、ライセンス本文を `licenses/` に。同梱の BudouX の新しい版に安全面の修正がないかをウェブで調べる。

@@ -2,3 +2,4 @@ dev/test/shots/
 __pycache__/
 .DS_Store
 dev/fonts/.cache/
+dev/out/

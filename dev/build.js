@@ -2,6 +2,7 @@
 // 公開用ファイルを組み立てる:  node dev/build.js
 //   dev/src/page.html + *.js  →  index.html（リポジトリ直下・GitHub Pages 用）と sw.js
 //                              →  dev/dist/artifact.html（Claude のアーティファクト用）
+//                              →  dev/out/line/（LINE版＝LINEミニアプリ。Cloudflare Pages がビルドして公開する。git には入れない）
 // リポジトリ直下の index.html と sw.js は生成物なので、手で編集しない。
 //   node dev/build.js --chars  →  画面に出る可能性のある文字を出力する（dev/fonts/make_fonts.py が使う）
 // 外部への通信はしない: フォントは fonts/ のサブセット、script はすべてインライン（CSP で許すのはそのハッシュだけ）。
@@ -143,4 +144,73 @@ self.addEventListener('fetch', e => {
 `;
 fs.writeFileSync(path.join(ROOT, 'sw.js'), sw);
 
-console.log(`built ${ver}: index.html (${(html.length / 1024).toFixed(1)} KB), sw.js, dev/dist/artifact.html`);
+// 6) LINE版（LINEミニアプリ）。ホーム画面版と同じページの最後に line.js を足す（ホーム画面版・アーティファクト版の出力は変えない）。
+//    Service Worker・manifest・apple-touch-icon は入れない。外への通信は LINE の SDK（static.line-scdn.net）と API（*.line.me）だけ許す。
+//    同じページを本番用＝いちばん上、審査用＝review/、開発用＝dev/ に置き、line.js がひらいた場所で LIFF ID をえらぶ
+//    （LINE Developers の「ウェブアプリ設定」のエンドポイントURLとそろえる）。フォント・favicon・licenses はいちばん上にだけ置き、
+//    どの場所からも /fonts/… のように同じものを指す。
+//    line.js は usedChars() に入れていない（いまは画面に文字を出さない）。画面に出す文を足すときは、usedChars() に入れてフォントを作り直す。
+const LINE_OUT = path.join(__dirname, 'out', 'line');
+const LINE_JS = `\n${read('line.js').trim()}\n`;
+if (LINE_JS.toLowerCase().includes('</script')) throw new Error('line.js に </script が含まれています');
+const lineHead = headPart.split('url("fonts/').join('url("/fonts/');
+if (lineHead.split('url("/fonts/').length - 1 !== FONTS.length) throw new Error('LINE版: page.html のフォントの数が fonts/ と合いません');
+const SAFE_BOTTOM = 'max(12px,env(safe-area-inset-bottom,0px),var(--android-safe-area-inset-bottom,0px))';
+let lineHtml = `<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="戦術ボードの状況を読んで次のプレーを選び、選手の動きと解説で理由を学ぶサッカー戦術クイズ。初級・中級・上級（指導者向け）の3段階。">
+<meta name="theme-color" content="#0B0B0B">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<style>:root{background:#0B0B0B;padding-top:env(safe-area-inset-top,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+${lineHead}
+<style>
+/* LINE版だけ: Android版LINE（26.3.0〜）は edge-to-edge 表示。下のナビゲーションバーの分を、LINE の変数と safe-area の大きいほうであける。
+   :root ではなく、画面いっぱいの入れもの（#app と記録の引っこしの .sheet-bg）ごとに書く（うちのこ日和で、:root だと小さい Android で下が隠れた） */
+html #app{padding-bottom:${SAFE_BOTTOM}}
+html .sheet-bg{padding-bottom:${SAFE_BOTTOM}}
+/* 開発用の画面だけ、右上のすみに小さく「開発用」 */
+html[data-line-ch="dev"] body::after{content:"開発用";position:fixed;top:2px;right:6px;z-index:20;font:600 10px/1 var(--f-body);color:var(--pen);pointer-events:none}
+</style>
+</head>
+<body>
+${bodyPart}
+<script>${LINE_JS}</script>
+</body>
+</html>
+`;
+const lineInline = [...SCRIPTS, LINE_JS];
+if (lineHtml.split('<script').length - 1 !== lineInline.length || !lineInline.every(s => lineHtml.includes(`<script>${s}</script>`))) {
+  throw new Error('LINE版の script が、埋め込んだものと一致しません');
+}
+const lineHashes = lineInline.map(s => `'sha256-${crypto.createHash('sha256').update(s, 'utf8').digest('base64')}'`);
+const lineCsp = [
+  "default-src 'none'", `script-src ${lineHashes.join(' ')} https://static.line-scdn.net`, "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'", "img-src 'self' https://*.line-scdn.net", "connect-src 'self' https://*.line.me https://*.line-scdn.net",
+  "frame-src https://*.line.me", "base-uri 'none'", "form-action 'none'"
+].join('; ');
+lineHtml = lineHtml.replace('__CSP__', lineCsp);
+fs.rmSync(LINE_OUT, { recursive: true, force: true });
+for (const d of ['', 'review', 'dev']) {
+  fs.mkdirSync(path.join(LINE_OUT, d), { recursive: true });
+  fs.writeFileSync(path.join(LINE_OUT, d, 'index.html'), lineHtml);
+}
+fs.mkdirSync(path.join(LINE_OUT, 'fonts'));
+for (const f of FONTS) fs.copyFileSync(path.join(ROOT, 'fonts', f), path.join(LINE_OUT, 'fonts', f));
+fs.copyFileSync(path.join(ROOT, 'favicon-32.png'), path.join(LINE_OUT, 'favicon-32.png'));
+fs.cpSync(path.join(ROOT, 'licenses'), path.join(LINE_OUT, 'licenses'), { recursive: true });
+// Cloudflare Pages の HTTP ヘッダー（meta の CSP では書けないもの）。ほかのサイトの枠（iframe）に入れさせない指定は、
+// うちのこ日和と同じく、まず開発用だけに入れ、iPhone の LINE でひらけるのを確かめてから全部へ広げる
+fs.writeFileSync(path.join(LINE_OUT, '_headers'), `/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+/dev/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+`);
+
+console.log(`built ${ver}: index.html (${(html.length / 1024).toFixed(1)} KB), sw.js, dev/dist/artifact.html, dev/out/line/`);
