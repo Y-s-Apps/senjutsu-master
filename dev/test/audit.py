@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """セキュリティ診断のうち、機械的に確かめられるものをまとめて調べる（読むだけで、何も書き換えない）。
 
-使い方: python3 dev/test/audit.py [--artifact 読み込んだアーティファクトのファイル] [--since コミット]
+使い方: python3 dev/test/audit.py [--artifact 読み込んだアーティファクトのファイル | --artifact-meta 行数:版] [--since コミット]
   --artifact  Artifact の read で保存したファイル。dev/dist/artifact.html と中身が同じかを確かめる
+  --artifact-meta  Artifact の read の見出しの total_lines と version（例 5914:1795110749-ffe7）。アーティファクトは
+              フォントを埋め込んで 1MiB をこえ、read で1つのファイルに保存できないので、行数と publish の時刻
+              （version の前の数字）が dev/dist/artifact.html と最後のコミットに合うかを見る。中身は数行を read で読みくらべる
   --since     このコミットから HEAD までに変わったファイルを一覧にする（前回の診断の続きを読むとき）
   環境変数 AUDIT_NAMES  探したい名前をカンマ区切りで（ユーザーに聞いた旧名など。ファイルには書かない）
 
@@ -237,11 +240,13 @@ def audit_line():
         if ext:
             probs.append(f'{name}.html にお問い合わせ先のほかの外部の URL: {sorted(ext)}')
     hdr = open(os.path.join(out, '_headers'), encoding='utf-8').read() if os.path.isfile(os.path.join(out, '_headers')) else ''
-    if 'nosniff' not in hdr or 'no-referrer' not in hdr:
-        probs.append('_headers に nosniff・no-referrer がない')
+    # Cloudflare Pages のヘッダー: 全部のページ（/*）に nosniff・no-referrer・ほかのサイトの枠に入れさせない（frame-ancestors・X-Frame-Options）
+    need = ['/*', 'X-Content-Type-Options: nosniff', 'Referrer-Policy: no-referrer', "Content-Security-Policy: frame-ancestors 'none'", 'X-Frame-Options: DENY']
+    if [h for h in need if h not in hdr] or not hdr.startswith('/*'):
+        probs.append('_headers に足りないもの: ' + ', '.join([h for h in need if h not in hdr] or ['/* が最初の行でない']))
     say('NG' if probs else 'OK', 'LINE版: ' + ('; '.join(probs) if probs else
         f"3か所が同じ、CSP は default-src 'none'・script は埋め込んだ {len(page.scripts)} 個のハッシュと static.line-scdn.net（LIFF SDK）、"
-        "通信は *.line.me・*.line-scdn.net だけ、SW・manifest なし、_headers あり、ポリシー・規約は script なしで外部はお問い合わせのフォームだけ"))
+        "通信は *.line.me・*.line-scdn.net だけ、SW・manifest なし、_headers（nosniff・no-referrer・frame-ancestors・X-Frame-Options）あり、ポリシー・規約は script なしで外部はお問い合わせのフォームだけ"))
 
 
 # ---- ③ Service Worker -----------------------------------------------------
@@ -421,6 +426,7 @@ def audit_github():
 def main():
     args = sys.argv[1:]
     art = args[args.index('--artifact') + 1] if '--artifact' in args else None
+    meta = args[args.index('--artifact-meta') + 1] if '--artifact-meta' in args else None
     since = args[args.index('--since') + 1] if '--since' in args else None
     print(f'セキュリティ診断（自動の部分） {REPO} @ {run("git", "rev-parse", "--short", "HEAD").decode().strip()}')
     if since:
@@ -438,8 +444,19 @@ def main():
         pub = open(art, encoding='utf-8').read()
         mine = read('dev/dist/artifact.html').strip()
         say('OK' if mine in pub else 'NG', 'Artifact の read で取った中身は dev/dist/artifact.html と' + ('同じ' if mine in pub else '違う（publish し直す）'))
+    elif meta and re.fullmatch(r'\d+:\d+-\w+', meta):
+        n, ver = meta.split(':', 1)
+        lines = read('dev/dist/artifact.html').count('\n')
+        pub_t = int(ver.split('-')[0])
+        last = int(run('git', 'log', '-1', '--format=%ct', '--', 'dev/dist/artifact.html').decode().strip() or 0)
+        if int(n) != lines:
+            say('NG', f'アーティファクトの行数 {n} が dev/dist/artifact.html（{lines} 行）と違う（publish し直す）')
+        else:
+            say('OK' if pub_t >= last else '要確認', f'アーティファクトの行数は dev/dist/artifact.html と同じ（{lines} 行）、publish は'
+                + ('最後に artifact.html を変えたコミットのあと' if pub_t >= last else 'artifact.html を変えたコミットより前（publish し直したか確かめる）')
+                + '。中身は数行を read で読みくらべる。公開範囲が「自分だけ」・capability が downloads だけかは read と read_declaration で見る')
     else:
-        say('読めない', 'Artifact の read の結果がない（--artifact で渡す）。公開範囲が「自分だけ」・capability が downloads だけかも read の見出しで確かめる')
+        say('読めない', 'Artifact の read の結果がない（--artifact でファイルか、--artifact-meta で行数:版を渡す）。公開範囲が「自分だけ」・capability が downloads だけかも read の見出しで確かめる')
     print('\n' + '・'.join(f'{k} {v}' for k, v in counts.items()))
     sys.exit(1 if counts['NG'] else 0)
 
