@@ -360,7 +360,7 @@ with sync_playwright() as p:
         pg.close()
 
     # 7) プライバシーポリシー・利用規約（いちばん上の /privacy.html・/terms.html。build.js が dev/legal/ から作る）
-    m2 = re.search(r"const CONTACT = \(process\.env\.CONTACT \?\? '([^']*)'\)", (ROOT / 'dev' / 'build.js').read_text(encoding='utf-8'))
+    m2 = re.search(r"const CONTACT_FORM = '([^']*)'", (ROOT / 'dev' / 'build.js').read_text(encoding='utf-8'))
     contact = m2.group(1) if m2 else ''
     if not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9]+', contact):
         fails.append(('docs', 'build.js の CONTACT が Google フォームの URL でない', contact))

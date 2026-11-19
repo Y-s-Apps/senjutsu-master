@@ -216,7 +216,7 @@ def audit_line():
         probs.append('ホーム画面版の index.html に line.js が入っている')
     # プライバシーポリシー・利用規約（dev/legal/ から作る静かなページ）: script なし、CSP は default-src 'none' で外部のホストなし、
     # 外部の URL はお問い合わせの Google フォーム（build.js の CONTACT）だけ
-    m = re.search(r"const CONTACT = \(process\.env\.CONTACT \?\? '([^']*)'\)", read('dev/build.js'))
+    m = re.search(r"const CONTACT_FORM = '([^']*)'", read('dev/build.js'))
     contact = m.group(1) if m else ''
     if not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9]+', contact):
         probs.append('build.js の CONTACT が Google フォームの URL でない')

@@ -155,7 +155,8 @@ const LINE_OUT = path.join(__dirname, 'out', 'line');
 // お問い合わせ（Google フォーム「戦術マスター お問い合わせ」。2026-11-20 にオーナーが作成）の URL。プライバシーポリシー・利用規約の
 // ページと、LINE版の「記録の引っこし」のリンクに入る。Cloudflare Pages のビルドは環境変数なしで動くので、ここに書く（秘密ではない）。
 // 空にするとページを作らず、リンクも出さない（ためしは CONTACT= node dev/build.js）。?usp=… などははずす
-const CONTACT = (process.env.CONTACT ?? 'https://forms.gle/X1okQbzCw5MhWdDb9').split('?')[0];
+const CONTACT_FORM = 'https://forms.gle/X1okQbzCw5MhWdDb9';
+const CONTACT = (process.env.CONTACT === undefined ? CONTACT_FORM : process.env.CONTACT).split('?')[0]; // ?? は古い Node で動かないので使わない
 if (CONTACT && !/^https:\/\/(forms\.gle\/[A-Za-z0-9]+|docs\.google\.com\/forms\/d\/e\/[A-Za-z0-9_-]+\/viewform)$/.test(CONTACT)) {
   throw new Error('CONTACT は Google フォームの URL（https://forms.gle/… か https://docs.google.com/forms/d/e/…/viewform）にしてください');
 }
