@@ -203,12 +203,11 @@ fs.mkdirSync(path.join(LINE_OUT, 'fonts'));
 for (const f of FONTS) fs.copyFileSync(path.join(ROOT, 'fonts', f), path.join(LINE_OUT, 'fonts', f));
 fs.copyFileSync(path.join(ROOT, 'favicon-32.png'), path.join(LINE_OUT, 'favicon-32.png'));
 fs.cpSync(path.join(ROOT, 'licenses'), path.join(LINE_OUT, 'licenses'), { recursive: true });
-// Cloudflare Pages の HTTP ヘッダー（meta の CSP では書けないもの）。ほかのサイトの枠（iframe）に入れさせない指定は、
-// うちのこ日和と同じく、まず開発用だけに入れ、iPhone の LINE でひらけるのを確かめてから全部へ広げる
+// Cloudflare Pages の HTTP ヘッダー（meta の CSP では書けないもの）。ほかのサイトの枠（iframe）に入れさせない。
+// うちのこ日和と同じく、まず開発用だけに入れ、2026-11-20 に iPhone の LINE で開発用がひらける（ready / LINE）のを確かめてから全部へ広げた
 fs.writeFileSync(path.join(LINE_OUT, '_headers'), `/*
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
-/dev/*
   Content-Security-Policy: frame-ancestors 'none'
   X-Frame-Options: DENY
 `);
