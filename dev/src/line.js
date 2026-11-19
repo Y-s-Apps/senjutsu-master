@@ -12,8 +12,8 @@
   'use strict';
   const CFG = {
     sdk: 'https://static.line-scdn.net/liff/edge/2/sdk.js',
-    // LIFF ID は秘密ではない（前の数字がチャネルID）。チャネルができたら入れる
-    liffIds: { prod: '', review: '', dev: '' },
+    // LIFF ID は秘密ではない（前の数字がチャネルID）。LINE Developers のチャネル「戦術マスター」（プロバイダー Y's Apps）の内部チャネル
+    liffIds: { prod: '2012708778-ZSvDqT22', review: '2012708777-zpGFCoht', dev: '2012708776-B5XREcR5' },
     initTimeout: 10000,
   };
   const CH = (/^\/(dev|review)(?:\/|$)/.exec(location.pathname) || [0, 'prod'])[1];
@@ -24,6 +24,8 @@
     d.line = L.state;
     d.lineCh = CH;
     if (L.inClient) d.lineClient = '1';
+    // 開発用だけ、右上の「開発用」の後ろに状態を出す（実機で確かめるため。build.js の CSS が attr() で読む。HTML には入れない）
+    if (CH === 'dev') document.body.dataset.lineState = L.state + (L.inClient ? ' / LINE' : '') + (L.error ? ' / ' + L.error : '');
   };
 
   // SDK を読み込んで待つ。読めなければ null（待ち受けを先につけてから読み込むので、失敗を取りこぼさない）

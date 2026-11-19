@@ -280,8 +280,8 @@ CLAUDE.md の「セキュリティ診断」の手順で ①コード ②外部�
 
 ## 5. やり残し・アイデア
 - **LINE版**（計画書 §1 の表。進める順番は計画書 8章）。いまは「入れもの」まで:
-  - オーナー: Cloudflare Pages のプロジェクト（ビルド `node dev/build.js`、出力 `dev/out/line`）、LINE Developers の LINEミニアプリチャネル「戦術マスター」、開発用のエンドポイントURL（`…pages.dev/dev/`）、Tester。終わったら pages.dev の URL と3つの LIFF ID を教えてもらい、`line.js` の `liffIds` に入れる
-  - iPhone の LINE（Tester）で開発用を開いてもらい、画面の高さ・下のすき間・「LINEと つながっている」状態（data-line）を見る。そのあと `_headers` の frame-ancestors を全部へ広げる
+  - 済み（2026-11-19〜20）: オーナーが Cloudflare Pages（https://senjutsu-master.pages.dev/ 。iPhone の Safari で本番用と開発用がひらけるのを確認）と LINE Developers のチャネル「戦術マスター」、開発用のエンドポイントURL、Tester を用意。3つの LIFF ID を `line.js` に入れた。Cloudflare の「Create application」は、何も選ばないと Workers の画面（Deploy command・API token の欄がある）になる。Pages は最初の画面の下の「Looking to deploy Pages? Get started」から（Workers だと URL にアカウントのサブドメインが入るので使わない）
+  - いま: iPhone の LINE（Tester）で開発用の LIFF URL を開いてもらい、右上が「開発用 ready / LINE」になるか、画面の高さ・下のすき間を見る。そのあと `_headers` の frame-ancestors を全部へ広げる
   - 画面の高さ: 詰め方を「使える高さ（下のすき間を引いた高さ）」で決める形にする（ホーム画面版の 590px 未満・661〜688px のはみ出しも一緒に直す）。見た目が変わるので、スクショで見せてから
   - 結果のシェア（`liff.shareTargetPicker()`。チャネルのシェアターゲットピッカーをオン）、記録の引っこしの「ファイルに保存」が LINE の中で動くか（動かなければ LINE版はコードのコピーだけ）
   - 書類: プライバシーポリシー・利用規約・お問い合わせ（Google フォーム）・130px のアイコン・チャネル説明と英語。アプリ名（と英語名）の商標を J-PlatPat で確かめる（認証のあとに変えると再審査）

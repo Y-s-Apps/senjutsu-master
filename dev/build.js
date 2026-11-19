@@ -173,8 +173,8 @@ ${lineHead}
    :root ではなく、画面いっぱいの入れもの（#app と記録の引っこしの .sheet-bg）ごとに書く（うちのこ日和で、:root だと小さい Android で下が隠れた） */
 html #app{padding-bottom:${SAFE_BOTTOM}}
 html .sheet-bg{padding-bottom:${SAFE_BOTTOM}}
-/* 開発用の画面だけ、右上のすみに小さく「開発用」 */
-html[data-line-ch="dev"] body::after{content:"開発用";position:fixed;top:2px;right:6px;z-index:20;font:600 10px/1 var(--f-body);color:var(--pen);pointer-events:none}
+/* 開発用の画面だけ、右上のすみに小さく「開発用」と LIFF の状態（line.js が body の data-line-state に入れる） */
+html[data-line-ch="dev"] body::after{content:"開発用 " attr(data-line-state);position:fixed;top:2px;right:6px;z-index:20;font:600 10px/1 var(--f-body);color:var(--pen);pointer-events:none}
 </style>
 </head>
 <body>

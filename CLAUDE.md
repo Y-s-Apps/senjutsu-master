@@ -42,14 +42,15 @@ LINE版（LINEミニアプリ、サーバーなし）を準備中（2026-11-19�
 
 ## LINE版（LINEミニアプリ。2026-11-19〜準備中）
 - 決めたこと（計画書 https://claude.ai/artifact/MXkTtDDzPqQNJm6ZSBYq1N 3章）: **サーバーなし**（LIFF だけのゲストの形。記録はホーム画面版と同じ localStorage）、結果のシェアはリリース前に入れる、無料・広告なしで未認証のまま出し、認証審査は個人事業主になってから。ホーム画面版・アーティファクト版は残す。型はうちのこ日和（`Y-s-Apps/uchinoko-biyori` の `src/js_line.js`・`src/build.sh`。読むだけで変えない）。
-- 置き場所: Cloudflare Pages のこのアプリ専用のプロジェクト（`senjutsu-master.pages.dev` の予定）。ビルドコマンド `node dev/build.js`、出力 `dev/out/line`。main に push すると LINE版も作り直される（毎節の自動追加の push も）。y-s-apps.github.io には置かない（組織のほかの Pages と保存を共有するため）。
+- 置き場所: Cloudflare Pages のこのアプリ専用のプロジェクト https://senjutsu-master.pages.dev/ （2026-11-19 にオーナーが作成）。ビルドコマンド `node dev/build.js`、出力 `dev/out/line`。main に push すると LINE版も作り直される（毎節の自動追加の push も）。y-s-apps.github.io には置かない（組織のほかの Pages と保存を共有するため）。
 - `dev/out/line/` の中身: 同じ `index.html` を `/`（本番用）・`/review/`（審査用）・`/dev/`（開発用）に置く。LINE Developers の「ウェブアプリ設定」のエンドポイントURLもこの3つ。`fonts/`・`favicon-32.png`・`licenses/`・`_headers` はいちばん上だけで、ページはフォントを `/fonts/…` で指す。Service Worker・manifest・apple-touch-icon は入れない。
 - ページはホーム画面版と同じ head と script に `line.js` を足したもの。ホーム画面版の `index.html` とアーティファクト版は1バイトも変えない（変えたら build.js かテストの誤り）。
+- LINE Developers: プロバイダー「Y's Apps」の LINEミニアプリチャネル「戦術マスター」（2026-11-20 作成、未認証）。LIFF URL は開発用 https://miniapp.line.me/2012708776-B5XREcR5 ・審査用 https://miniapp.line.me/2012708777-zpGFCoht ・本番用 https://miniapp.line.me/2012708778-ZSvDqT22 （LIFF ID の前の数字がチャネルID）。エンドポイントURLは、いまは開発用（`…pages.dev/dev/`）だけ。
 - `line.js`: LIFF ID（`liffIds` の prod・review・dev。秘密ではない）を、ひらいた場所（`/dev/`・`/review/`・それ以外）でえらぶ。空ならその場所では SDK を読まない。SDK はエッジパス `https://static.line-scdn.net/liff/edge/2/sdk.js`（版を固定しない。v2.20.0〜v2.31.0 は脆弱性があり 2026-11-24 ごろ利用制限）。読めない・10秒で初期化できない・LINE の外のブラウザでも、画面は app.js が先に出しているので、ふつうの Web 版として遊べる。状態は `<html data-line="off|loading|ready|failed" data-line-ch="prod|review|dev" data-line-client="1">`。`window.TMLine` にまとめる（シェアなどがあとで使う）。LINE の ID・トークン・プロフィールは使わず、どこへも送らない（Scope は openid だけ。起動時に `getProfile()` などを呼ばない）。
 - `line.js` は `usedChars()` に入れていない（いまは画面に文字を出さない）。画面に出す文を足すときは `usedChars()` に入れ、足りない文字があれば `make_fonts.py` で作り直す。
 - LINE版の CSP（build.js が作る `<meta>`）: script は埋め込みのハッシュと `https://static.line-scdn.net`、通信は `'self'`・`https://*.line.me`・`https://*.line-scdn.net`、img は `'self'`・`https://*.line-scdn.net`、frame は `https://*.line.me`。それ以外は全部禁止（`audit.py` が決まったホストだけかを確かめる）。`_headers` は全部に nosniff・no-referrer、`/dev/*` だけに `frame-ancestors 'none'`・`X-Frame-Options: DENY`（うちのこ日和と同じく、iPhone の LINE で開発用がひらけるのを確かめてから全部へ広げる）。
 - 画面の高さ: Android版LINE（edge-to-edge）は下のナビゲーションバーの分を `--android-safe-area-inset-bottom` で渡すので、LINE版だけ `#app` と `.sheet-bg` の下を `max(12px, env(safe-area-inset-bottom), var(--android-safe-area-inset-bottom))` にする（:root には書かない）。page.html の「背の低い画面」の詰め方は画面の高さ（`max-height: 660px`）で決まり、このすき間を見ないので、390×700・360×620 ですき間 48px のときホームが数px はみ出す（`line.py` は注意だけ。HANDOFF §5）。
-- 開発用（`/dev/`）だけ右上に小さく「開発用」と出す（build.js の LINE版の head の CSS）。
+- 開発用（`/dev/`）だけ右上に小さく「開発用」と LIFF の状態（`開発用 ready / LINE`・`開発用 failed / INIT_FAILED` など）を出す。line.js が body の `data-line-state` に入れ、build.js の LINE版の head の CSS が `attr()` で読む（HTML には入れない）。実機で、つながったかを見るため。
 
 ## 出題の仕組み（`dev/src/logic.js`）
 - 1回に6問（`TM.SESSION`）。自己ベストの満点は 6×2=12 点のまま（問題が増えても記録は引き継がれる）。
