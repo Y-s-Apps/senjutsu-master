@@ -193,9 +193,11 @@ def play_fav(pg, tag, strict, checked):
         if i in (0, 1):
             shot(pg, f'{tag}-fav-pick' + ('' if i == 0 else '-set'))
         pg.click(f'[data-fav="{c["id"]}"]')
-        # 12問から6問をランダムに（直前の4問だけ避ける）。全問が出るまで続けて遊び、前回と重なるのは2問までを確かめる
-        got, prev = set(), []
-        for k in range(10):
+        # 12問から6問をランダムに（直前の4問だけ避ける）。全問が出るまで続けて遊び、前回と重なるのは2問までを確かめる。
+        # 選び方はランダムなので、10回だと全問が出ないことが1クラブで最大 0.7% ほどあった（9クラブで1回の fit.py が数%で落ちる）。
+        # 20回ならほぼ0。最後の回のあとは「別の問題で」を押さない（押すと結果画面でなくなり、#toHome が見つからずに止まる）
+        got, prev, tries = set(), [], 20
+        for k in range(tries):
             ids = session(pg, tag, c['id'], strict, checked, ('question',) if i == 0 and k == 0 else ())
             if len(ids) != min(6, len(c['ids'])) or len(set(ids)) != len(ids):
                 fails.append((tag, c['id'], '1回の問題の数・重複', ids))
@@ -203,11 +205,11 @@ def play_fav(pg, tag, strict, checked):
                 fails.append((tag, c['id'], '前回と3問以上重なった', sorted(set(ids) & set(prev))))
             got.update(ids)
             prev = ids
-            if got == set(c['ids']):
+            if got == set(c['ids']) or k == tries - 1:
                 break
             pg.click('#retry')
         if got != set(c['ids']):
-            fails.append((tag, c['id'], '10回で全問が出ない', sorted(set(c['ids']) - got)))
+            fails.append((tag, c['id'], f'{tries}回で全問が出ない', sorted(set(c['ids']) - got)))
         pg.click('#toHome')
         head = pg.inner_text('.lv-fav')
         best = pg.evaluate("id => (JSON.parse(localStorage.getItem('tacdrill-best-v1')) || {})[id]", c['id'])
