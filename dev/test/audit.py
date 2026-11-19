@@ -223,7 +223,7 @@ def audit_line():
     contact = m.group(1) if m else ''
     if not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9]+', contact):
         probs.append('build.js の CONTACT が Google フォームの URL でない')
-    for name in ('privacy', 'terms'):
+    for name in ('privacy', 'terms', '404'):  # 404.html がないと Cloudflare Pages はどの URL にも index.html を返す
         f = os.path.join(out, f'{name}.html')
         if not os.path.isfile(f):
             probs.append(f'{name}.html がない')
@@ -246,7 +246,7 @@ def audit_line():
         probs.append('_headers に足りないもの: ' + ', '.join([h for h in need if h not in hdr] or ['/* が最初の行でない']))
     say('NG' if probs else 'OK', 'LINE版: ' + ('; '.join(probs) if probs else
         f"3か所が同じ、CSP は default-src 'none'・script は埋め込んだ {len(page.scripts)} 個のハッシュと static.line-scdn.net（LIFF SDK）、"
-        "通信は *.line.me・*.line-scdn.net だけ、SW・manifest なし、_headers（nosniff・no-referrer・frame-ancestors・X-Frame-Options）あり、ポリシー・規約は script なしで外部はお問い合わせのフォームだけ"))
+        "通信は *.line.me・*.line-scdn.net だけ、SW・manifest なし、_headers（nosniff・no-referrer・frame-ancestors・X-Frame-Options）あり、ポリシー・規約・404 は script なしで外部はお問い合わせのフォームだけ"))
 
 
 # ---- ③ Service Worker -----------------------------------------------------
@@ -413,8 +413,10 @@ def audit_github():
     runs = gh(f'repos/{REPO}/commits/main/check-runs', '[.check_runs[]|[.name,.conclusion]]')
     if runs:
         runs = json.loads(runs)
-        bad = [f'{n}: {c}' for n, c in runs if c != 'success']
-        say('NG' if bad else 'OK', 'main の最新コミットの確認（Pages の公開・CodeQL）: ' + ('、'.join(bad) if bad else '、'.join(n for n, _ in runs) + ' がすべて成功'))
+        bad = [f'{n}: {c}' for n, c in runs if c not in ('success', None)]
+        wait = [n for n, c in runs if c is None]  # まだ動いている（push の直後。CodeQL は数分かかる）
+        say('NG' if bad else '要確認' if wait else 'OK', 'main の最新コミットの確認（Pages の公開・CodeQL）: ' + (
+            '、'.join(bad) if bad else '実行中 ' + '、'.join(wait) + '（数分あとに流し直す）' if wait else '、'.join(n for n, _ in runs) + ' がすべて成功'))
     dep = gh(f'repos/{REPO}/deployments?per_page=1', '.[0]|[.environment,.sha[0:7]]')
     head = run('git', 'rev-parse', '--short=7', 'origin/main', ok=True).decode().strip()
     if dep:

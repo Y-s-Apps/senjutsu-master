@@ -219,11 +219,11 @@ fs.cpSync(path.join(ROOT, 'licenses'), path.join(LINE_OUT, 'licenses'), { recurs
 fs.mkdirSync(path.join(LINE_OUT, 'share'));
 fs.copyFileSync(path.join(__dirname, 'icons', 'share-hero.png'), path.join(LINE_OUT, 'share', 'hero.png'));
 fs.copyFileSync(path.join(ROOT, 'icon-192.png'), path.join(LINE_OUT, 'share', 'icon.png'));
-// プライバシーポリシー・利用規約（LINE Developers の「チャネル基本設定」に入れる URL: https://<このサイト>/privacy.html・/terms.html。
+// プライバシーポリシー・利用規約と 404.html（ポリシー・規約は LINE Developers の「チャネル基本設定」に入れる URL: https://<このサイト>/privacy.html・/terms.html。
 // 変えると認証のあとは再審査）。もとは dev/legal/。外から何も読まない静かなページ（script なし。CSP はページの meta）。
 // 文字は端末のフォント（アプリのフォントはアプリの文字だけのサブセット）なので、改行の位置はここで決める: アプリの phrase() と同じく
 // BudouX で文節の間に <wbr> を入れ、CSS の keep-all で文節の中では折らない（助詞などで始まる文節は前につなぎ、閉じ括弧の直後は U+2060）
-if (CONTACT) {
+{
   const bx = { window: {} }; vm.createContext(bx);
   vm.runInContext(read('budoux.js'), bx);
   const JA = /[぀-ヿ㐀-鿿]/;
@@ -236,10 +236,12 @@ if (CONTACT) {
     return s.split('\u0000').map(p => p.replace(/([）」』)])(?=[^）」』)、。，．・：！？])/g, '$1⁠')).join('<wbr>');
   };
   const css = fs.readFileSync(path.join(__dirname, 'legal', 'legal.css'), 'utf8').trim();
-  for (const name of ['privacy', 'terms']) {
+  // 404.html: 見つからないページ。これがないと Cloudflare Pages は「1ページのアプリ」とみなし、どの URL にも本番用の index.html を
+  // 200 で返す（/sw.js・/.git/config・/dev/build.js なども。2026-11-20 のセキュリティ診断で確認）。ポリシーと同じ静かなページで、いつも作る
+  for (const name of (CONTACT ? ['privacy', 'terms'] : []).concat('404')) {
     const src = fs.readFileSync(path.join(__dirname, 'legal', `${name}.html`), 'utf8');
     const [head, body] = src.split('<body>');
-    if (!body || !head.includes('__CSS__') || !body.includes('__CONTACT__')) throw new Error(`dev/legal/${name}.html の形が違います`);
+    if (!body || !head.includes('__CSS__') || (name !== '404' && !body.includes('__CONTACT__'))) throw new Error(`dev/legal/${name}.html の形が違います`);
     // 自分で書いたページの文字の部分だけに <wbr> を入れる（タグの中は変えない）
     const out = head.replace('__CSS__', css) + '<body>' + body.split(/(<[^>]*>)/).map(s => (s.startsWith('<') || !JA.test(s) ? s : wbr(s))).join('').split('__CONTACT__').join(CONTACT);
     if (/__[A-Z]+__/.test(out)) throw new Error(`dev/legal/${name}.html に置きかえていない印があります`);

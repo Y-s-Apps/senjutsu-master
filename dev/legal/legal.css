@@ -1,4 +1,4 @@
-/* プライバシーポリシー・利用規約のページ（LINE版のいちばん上の /privacy.html・/terms.html）。dev/build.js が <style> に入れる。
+/* プライバシーポリシー・利用規約・見つからないページ（LINE版のいちばん上の /privacy.html・/terms.html・/404.html）。dev/build.js が <style> に入れる。
    アプリと同じ黒の1テーマ・1px の線と角丸・強い色はペンの黄だけ（CLAUDE.md「見た目の決まり」）。
    文字は端末のフォント（アプリのフォントはアプリの文字だけのサブセットなので）。題字の「戦術マスター」だけ TM Display */
 @font-face { font-family: "TM Display"; src: url("/fonts/tm-display-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }

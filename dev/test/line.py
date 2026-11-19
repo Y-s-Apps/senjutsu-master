@@ -389,6 +389,26 @@ with sync_playwright() as p:
                 pg.screenshot(path=str(SHOTS / f'line-{name}.png'))
             pg.close()
 
+    # 7b) 見つからないページ（/404.html。これがないと Cloudflare Pages はどの URL にも index.html を 200 で返す）
+    f = OUT / '404.html'
+    src = f.read_text(encoding='utf-8') if f.is_file() else ''
+    if not src or '<script' in src.lower() or "default-src 'none'" not in src or re.search(r'https?://', src) or 'href="/"' not in src:
+        fails.append(('docs', '404.html: ない・script がある・CSP がない・外部の URL がある・アプリへのリンクがない のどれか'))
+    else:
+        for w in (320, 390):
+            pg = page(browser, base, errors, w=w, h=700)
+            pg.goto(base + '/404.html')
+            pg.wait_for_selector('main a[href="/"]')
+            over = pg.evaluate('() => document.documentElement.scrollWidth - innerWidth')
+            if over > 0:
+                fails.append(('docs', f'404.html {w}px: 横にはみ出す', over))
+            bad = pg.evaluate(LEGAL_BREAKS)
+            if bad:
+                fails.append(('docs', f'404.html {w}px: 語の途中で改行', bad[:5]))
+            if TAKE and w == 390:
+                pg.screenshot(path=str(SHOTS / 'line-404.png'))
+            pg.close()
+
     # 8) 記録の引っこしのいちばん下: ポリシー・規約・お問い合わせのリンクと「この端末の記録を消す」
     #    LINE の中は liff.openWindow（LINE のブラウザで上にひらく）、LINE の外は別のタブ
     for name, sdk, ua in (('LINE の中', stub(in_client=True), LINE_UA), ('LINE の外', stub(), None)):
