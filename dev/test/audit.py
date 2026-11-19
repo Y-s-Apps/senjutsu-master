@@ -128,7 +128,8 @@ def audit_code():
 def audit_external():
     section('② 外部との通信・依存')
     found = {}
-    for f in ['index.html', 'sw.js', 'manifest.webmanifest', 'dev/dist/artifact.html', 'dev/src/page.html'] + src_files():
+    for f in ['index.html', 'sw.js', 'manifest.webmanifest', 'dev/dist/artifact.html', 'dev/src/page.html',
+              'dev/legal/privacy.html', 'dev/legal/terms.html', 'dev/legal/legal.css'] + src_files():
         for u in re.findall(r'https?://[^\s"\'`<>()\\]+', read(f)):
             u = u.rstrip('.,;')
             if u not in ALLOWED_URLS and not (f == 'dev/src/line.js' and u in LINE_URLS):
@@ -213,12 +214,34 @@ def audit_line():
         probs.append('Service Worker か manifest が入っている')
     if 'liffIds' in read('index.html') or 'shareTargetPicker' in read('index.html'):  # app.js は window.TMLine を見るだけ
         probs.append('ホーム画面版の index.html に line.js が入っている')
+    # プライバシーポリシー・利用規約（dev/legal/ から作る静かなページ）: script なし、CSP は default-src 'none' で外部のホストなし、
+    # 外部の URL はお問い合わせの Google フォーム（build.js の CONTACT）だけ
+    m = re.search(r"const CONTACT = \(process\.env\.CONTACT \?\? '([^']*)'\)", read('dev/build.js'))
+    contact = m.group(1) if m else ''
+    if not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9]+', contact):
+        probs.append('build.js の CONTACT が Google フォームの URL でない')
+    for name in ('privacy', 'terms'):
+        f = os.path.join(out, f'{name}.html')
+        if not os.path.isfile(f):
+            probs.append(f'{name}.html がない')
+            continue
+        lp = Page()
+        lp.feed(open(f, encoding='utf-8').read())
+        lp.close()
+        ldirs = {d.split()[0]: d.split()[1:] for d in (lp.csp or '').split(';') if d.strip()}
+        if lp.scripts or lp.script_attrs:
+            probs.append(f'{name}.html に script がある')
+        if ldirs.get('default-src') != ["'none'"] or any(re.search(r'https?:|\*|data:|blob:', x) for v in ldirs.values() for x in v):
+            probs.append(f"{name}.html の CSP が default-src 'none' でないか、外部のホストがある")
+        ext = set(re.findall(r'https?://[^\s"\'<>]+', open(f, encoding='utf-8').read())) - {contact}
+        if ext:
+            probs.append(f'{name}.html にお問い合わせ先のほかの外部の URL: {sorted(ext)}')
     hdr = open(os.path.join(out, '_headers'), encoding='utf-8').read() if os.path.isfile(os.path.join(out, '_headers')) else ''
     if 'nosniff' not in hdr or 'no-referrer' not in hdr:
         probs.append('_headers に nosniff・no-referrer がない')
     say('NG' if probs else 'OK', 'LINE版: ' + ('; '.join(probs) if probs else
         f"3か所が同じ、CSP は default-src 'none'・script は埋め込んだ {len(page.scripts)} 個のハッシュと static.line-scdn.net（LIFF SDK）、"
-        "通信は *.line.me・*.line-scdn.net だけ、SW・manifest なし、_headers あり"))
+        "通信は *.line.me・*.line-scdn.net だけ、SW・manifest なし、_headers あり、ポリシー・規約は script なしで外部はお問い合わせのフォームだけ"))
 
 
 # ---- ③ Service Worker -----------------------------------------------------

@@ -60,15 +60,33 @@ def serve(directory):
 
 
 def without_ids(html):
-    """LIFF ID を空にした版を作る（line.js の中身が変わるので、CSP のハッシュも作り直す）"""
+    """LIFF ID とお問い合わせ先（CONTACT）を空にした版を作る（line.js の中身が変わるので、CSP のハッシュも作り直す）"""
     old = re.findall(r'<script>(.*?)</script>', html, flags=re.S)[-1]
     new = re.sub(r"liffIds: \{[^}]*\}", "liffIds: { prod: '', review: '', dev: '' }", old)
+    new = re.sub(r'const CONTACT = "[^"]*";', 'const CONTACT = "";', new)
     h = lambda s: "'sha256-" + base64.b64encode(hashlib.sha256(s.encode('utf-8')).digest()).decode() + "'"
     if h(old) not in html:
         fails.append(('csp', 'CSP に line.js のハッシュがない'))
     return html.replace(old, new).replace(h(old), h(new))
 
 
+# ポリシー・規約のページで、行頭に来たら「語の途中で折れている」とみなす文字（fit.py の BREAKS と同じ考え方）
+LEGAL_BREAKS = r"""() => {
+  const BAD = /[をにがはのへてゃゅょぁぃぅぇぉっァィゥェォッャュョー、。・）」』，．：！？]/;
+  const out = []; let prev = null;
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const r = document.createRange();
+  while (w.nextNode()) {
+    const n = w.currentNode, el = n.parentElement;
+    const block = el.closest('p, li, h1, h2, h3, th, td, footer');
+    for (let i = 0; i < n.length; i++) {
+      r.setStart(n, i); r.setEnd(n, i + 1);
+      const b = r.getBoundingClientRect(); if (!b.width) continue;
+      if (prev && prev.block === block && b.top > prev.top + 4 && BAD.test(n.data[i])) out.push((prev.text + '|' + n.data.slice(i, i + 6)).trim());
+      prev = { block, top: b.top, text: (prev && prev.block === block ? prev.text : '').slice(-6) + n.data[i] };
+    }
+  }
+  return out; }"""
 OV = """() => { const d = document.documentElement; const sc = document.querySelector('.screen');
   return Math.max(d.scrollHeight - innerHeight, d.scrollWidth - innerWidth, sc ? sc.scrollHeight - sc.clientHeight : 0); }"""
 FONTS = """async () => { await document.fonts.ready;
@@ -86,7 +104,8 @@ def stub(in_client=False, hang=False, share=False, result='success'):
     return (f"window.liff = {{ init: o => {{ window.__initId = o && o.liffId; return {init}; }},"
             f" isInClient: () => {str(in_client).lower()},"
             f" isApiAvailable: n => {str(share).lower()} && n === 'shareTargetPicker',"
-            f" shareTargetPicker: (m, o) => {{ window.__sent = m; window.__opts = o; return {pick}; }} }};")
+            f" shareTargetPicker: (m, o) => {{ window.__sent = m; window.__opts = o; return {pick}; }},"
+            f" openWindow: o => {{ window.__ow = o; }} }};")
 
 
 # 共有シート（Web Share のファイル）のまね。'none' は使えない（Android の LINE）、'ok' は渡せる、'fail' は渡せるはずが失敗する
@@ -339,6 +358,116 @@ with sync_playwright() as p:
         if TAKE and name == 'LINE の中・共有シートなし':
             pg.screenshot(path=str(SHOTS / 'line-move.png'))
         pg.close()
+
+    # 7) プライバシーポリシー・利用規約（いちばん上の /privacy.html・/terms.html。build.js が dev/legal/ から作る）
+    m2 = re.search(r"const CONTACT = \(process\.env\.CONTACT \?\? '([^']*)'\)", (ROOT / 'dev' / 'build.js').read_text(encoding='utf-8'))
+    contact = m2.group(1) if m2 else ''
+    if not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9]+', contact):
+        fails.append(('docs', 'build.js の CONTACT が Google フォームの URL でない', contact))
+    for name in ('privacy', 'terms'):
+        f = OUT / f'{name}.html'
+        if not f.is_file():
+            fails.append(('docs', f'{name}.html がない'))
+            continue
+        src = f.read_text(encoding='utf-8')
+        if '<script' in src.lower() or "default-src 'none'" not in src or contact not in src or '<wbr>' not in src:
+            fails.append(('docs', f'{name}.html: script がある・CSP がない・お問い合わせ先がない・<wbr> がない のどれか'))
+        ext = set(re.findall(r'https?://[^\s"\'<>]+', src)) - {contact}
+        if ext:
+            fails.append(('docs', f'{name}.html にお問い合わせ先のほかの外部の URL', sorted(ext)))
+        for w in (320, 360, 390):
+            pg = page(browser, base, errors, w=w, h=700)
+            pg.goto(base + f'/{name}.html')
+            pg.wait_for_selector('footer a')
+            over = pg.evaluate('() => document.documentElement.scrollWidth - innerWidth')
+            if over > 0:
+                fails.append(('docs', f'{name}.html {w}px: 横にはみ出す', over))
+            bad = pg.evaluate(LEGAL_BREAKS)
+            if bad:
+                fails.append(('docs', f'{name}.html {w}px: 語の途中で改行', bad[:5]))
+            if TAKE and w == 390:
+                pg.screenshot(path=str(SHOTS / f'line-{name}.png'))
+            pg.close()
+
+    # 8) 記録の引っこしのいちばん下: ポリシー・規約・お問い合わせのリンクと「この端末の記録を消す」
+    #    LINE の中は liff.openWindow（LINE のブラウザで上にひらく）、LINE の外は別のタブ
+    for name, sdk, ua in (('LINE の中', stub(in_client=True), LINE_UA), ('LINE の外', stub(), None)):
+        pg = page(browser, base, errors, sdk=sdk, ua=ua, best=True)
+        pg.add_init_script("window.open = (u, t, f) => { window.__opened = [u, t, f]; return null; }")
+        pg.goto(base + '/review/')
+        wait_state(pg, 'ready', 'リンク ' + name)
+        pg.click('#moveOpen')
+        docs = pg.eval_on_selector_all('[data-doc]', 'bs => bs.map(b => b.dataset.doc + ":" + b.textContent)')
+        if docs != ['privacy:プライバシーポリシー', 'terms:利用規約', 'contact:お問い合わせ']:
+            fails.append(('リンク ' + name, 'リンクの並びか文字がちがう', docs))
+        for doc, url in (('privacy', base + '/privacy.html'), ('terms', base + '/terms.html'), ('contact', contact)):
+            pg.evaluate('() => { window.__ow = null; window.__opened = null; }')
+            pg.click(f'[data-doc="{doc}"]')
+            got = pg.evaluate('() => window.__ow') if ua else pg.evaluate('() => window.__opened')
+            ok = (got == {'url': url, 'external': False}) if ua else (got == [url, '_blank', 'noopener'])
+            if not ok:
+                fails.append(('リンク ' + name, doc, got))
+        pg.close()
+    # 消す: もう一度たずねる・やめると何も消えない・消すとこのアプリの4つのキーだけ消える（ほかのアプリのキーは残す）
+    pg = page(browser, base, errors, sdk=stub(in_client=True), ua=LINE_UA, best=True)
+    pg.add_init_script("localStorage.setItem('senjutsu-master-fav-v1', 'yokohama');"
+                       "localStorage.setItem('senjutsu-master-recent-v1', JSON.stringify({ basic: ['b01'] }));"
+                       "localStorage.setItem('senjutsu-master-live-best-v1', JSON.stringify({ 'j1-2026-12': 8 }));"
+                       "localStorage.setItem('uchinoko-test-key', '1');")
+    pg.goto(base + '/')
+    wait_state(pg, 'ready', '消す')
+    KEYS = "() => ['tacdrill-best-v1', 'senjutsu-master-recent-v1', 'senjutsu-master-fav-v1', 'senjutsu-master-live-best-v1', 'uchinoko-test-key'].map(k => localStorage.getItem(k) !== null)"
+    pg.click('#moveOpen')
+    pg.click('#mvDel')
+    if not pg.query_selector('#mvDelYes') or not pg.query_selector('#mvDelNo') or 'もとに戻せません' not in pg.inner_text('#mvMsg'):
+        fails.append(('消す', 'もう一度たずねない'))
+    pg.click('#mvDelNo')
+    if pg.evaluate(KEYS) != [True] * 5 or not pg.query_selector('#mvDel'):
+        fails.append(('消す', '「やめる」で記録が消えたか、元に戻らない'))
+    pg.click('#mvDel')
+    pg.click('#mvDelYes')
+    if pg.evaluate(KEYS) != [False, False, False, False, True]:
+        fails.append(('消す', '消えるキーがちがう', pg.evaluate(KEYS)))
+    if not pg.is_disabled('#mvCopy') or pg.inner_text('#mvOut').strip() or '消しました' not in pg.inner_text('#mvMsg'):
+        fails.append(('消す', '消したあとの画面（コピーのボタン・コード・メッセージ）'))
+    pg.click('#mvClose')
+    if '最高' in pg.inner_text('[data-start="basic"]') and '10' in pg.inner_text('[data-start="basic"] .lv-best'):
+        fails.append(('消す', 'ホームに消した自己ベストが残っている'))
+    pg.close()
+
+    # 9) 記録の引っこしが、下のすき間 48px の Android の LINE でも収まる（いちばん下の2行がある。使える高さ 488px まで。320px 幅はできる範囲）
+    pg = page(browser, base, errors, sdk=stub(in_client=True), ua=LINE_UA, best=True, inset=48)
+    pg.add_init_script("localStorage.setItem('tacdrill-best-v1', JSON.stringify({ basic: 10, team: 8, coach: 6, club: 7, yokohama: 10, kashima: 9, nagoya: 11, suita: 12 }))")
+    pg.goto(base + '/')
+    wait_state(pg, 'ready', '引っこしの高さ')
+    pg.click('#moveOpen')
+    SH = "() => { const s = document.querySelector('.sheet'); return s.scrollHeight - s.clientHeight; }"
+    for w in (360, 390, 412):
+        for h in range(548, 901, 8):
+            pg.set_viewport_size({'width': w, 'height': h})
+            pg.wait_for_timeout(20)
+            for st in ('ふだん', '消す前'):
+                if st == '消す前':
+                    pg.click('#mvDel')
+                over = pg.evaluate(SH)
+                if over > 0:
+                    fails.append(('引っこしの高さ', f'{w}x{h} {st}', f'{over}px はみ出す'))
+                if st == '消す前':
+                    pg.click('#mvDelNo')
+    pg.close()
+    # 13 のデッキすべてに記録があり、画面もとても低いとき: 収まらない分は重ねの中のスクロールで届く（下が切れて押せない、にしない）
+    pg = page(browser, base, errors, sdk=stub(in_client=True), ua=LINE_UA, w=360, h=548, inset=48)
+    pg.add_init_script("localStorage.setItem('tacdrill-best-v1', JSON.stringify({ basic: 12, team: 12, coach: 12, club: 12, kashima: 12, urawa: 12,"
+                       " chiba: 12, tokyo: 12, yokohama: 12, shimizu: 12, nagoya: 12, suita: 12, hiroshima: 12 }))")
+    pg.goto(base + '/')
+    wait_state(pg, 'ready', '引っこし 記録が多い')
+    pg.click('#moveOpen')
+    reach = pg.evaluate("""() => { const s = document.querySelector('.sheet'); s.scrollTop = s.scrollHeight;
+      const a = s.getBoundingClientRect(), b = document.getElementById('mvDel').getBoundingClientRect();
+      return getComputedStyle(s).overflowY === 'auto' && b.top >= a.top && b.bottom <= a.bottom; }""")
+    if not reach:
+        fails.append(('引っこし 記録が多い', '「この端末の記録を消す」に届かない'))
+    pg.close()
     srv.shutdown()
 
     # 6) LIFF ID を空にした版: SDK を読まずに off のまま遊べる（SDK を読んだら「外部への通信」になる）
@@ -355,6 +484,10 @@ with sync_playwright() as p:
     st = pg.evaluate(STATE)
     if st['line'] != 'off' or pg.evaluate('() => !!window.liff') or st['mark'] != '"開発用 off"':
         fails.append(('LIFF ID なし', 'SDK を読んだか、off にならない', st))
+    pg.click('#moveOpen')
+    if pg.query_selector('[data-doc]') or not pg.query_selector('#mvDel'):
+        fails.append(('お問い合わせ先なし', 'リンクが出るか、「この端末の記録を消す」が出ない'))
+    pg.click('#mvClose')
     play_one(pg, 'LIFF ID なし')
     pg.close()
     srv.shutdown()

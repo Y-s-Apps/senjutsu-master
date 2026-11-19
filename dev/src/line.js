@@ -12,6 +12,7 @@
      送るのはコースの名前・点数・ベストの数（app.js が渡す）と、アプリをひらくボタンだけ。画像は build.js が置く固定の絵（/share/）。
    - 記録の引っこし（inLine・canSaveFile）: LINE の中（LIFF ブラウザ）は download 属性が使えないので、ファイルの保存は共有シート
      （Web Share のファイル）が使えるときだけ。使えなければ app.js が「ファイルに保存」を出さず、コードのコピーだけにする。
+   - プライバシーポリシー・利用規約・お問い合わせ（docsOn・openDoc）: app.js の「記録の引っこし」のリンクがひらく。
    画面に出す文は app.js に書く（line.js の文字は、フォントのサブセットに入れていない）。 */
 (() => {
   'use strict';
@@ -111,7 +112,23 @@
       return 'error';
     }
   }
-  Object.assign(L, { inLine, canSaveFile, canShare, share, message });
+  // ---------- プライバシーポリシー・利用規約・お問い合わせ ----------
+  // ページはこのサイトのいちばん上（/privacy.html・/terms.html。build.js が dev/legal/ から作る。審査用・開発用からも同じページ）。
+  // お問い合わせは Google フォーム。build.js が CONTACT に URL を入れ、空のあいだはページを作らず、リンクも出さない（docsOn）。
+  // LINE の中では LINE のブラウザで上にひらき（遊んでいる画面はそのまま）、LINE の外では別のタブ
+  const CONTACT = '__CONTACT__';
+  const DOCS = { privacy: '/privacy.html', terms: '/terms.html' };
+  const docsOn = () => /^https:\/\/(forms\.gle|docs\.google\.com)\//.test(CONTACT);
+  function openDoc(name) {
+    if (!docsOn()) return;
+    const url = name === 'contact' ? CONTACT : (DOCS[name] ? new URL(DOCS[name], location.origin).href : '');
+    if (!url) return;
+    try {
+      if (L.state === 'ready' && L.inClient && window.liff && typeof liff.openWindow === 'function') { liff.openWindow({ url, external: false }); return; }
+    } catch (e) { /* 別のタブで */ }
+    window.open(url, '_blank', 'noopener');
+  }
+  Object.assign(L, { inLine, canSaveFile, canShare, share, message, docsOn, openDoc });
 
   // SDK を読み込んで待つ。読めなければ null（待ち受けを先につけてから読み込むので、失敗を取りこぼさない）
   const sdk = () => new Promise(res => {

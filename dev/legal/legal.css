@@ -1,0 +1,41 @@
+/* プライバシーポリシー・利用規約のページ（LINE版のいちばん上の /privacy.html・/terms.html）。dev/build.js が <style> に入れる。
+   アプリと同じ黒の1テーマ・1px の線と角丸・強い色はペンの黄だけ（CLAUDE.md「見た目の決まり」）。
+   文字は端末のフォント（アプリのフォントはアプリの文字だけのサブセットなので）。題字の「戦術マスター」だけ TM Display */
+@font-face { font-family: "TM Display"; src: url("/fonts/tm-display-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+:root {
+  --bg: #0B0B0B; --surface: #141414; --line: #252525; --line-2: #343434;
+  --ink: #F1F1EE; --muted: #8E8E89; --pen: #FFD43B;
+  color-scheme: dark;
+}
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 15px/1.8 "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+  word-break: keep-all; overflow-wrap: anywhere; line-break: strict; -webkit-font-smoothing: antialiased;
+}
+main {
+  box-sizing: border-box; max-width: 680px; margin: 0 auto;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+header { margin: 0 0 18px; }
+.app { margin: 0; font: 400 15px/1.3 "TM Display", "Hiragino Sans", "Yu Gothic", sans-serif; letter-spacing: .02em; }
+h1 { margin: 6px 0 6px; font-size: 24px; line-height: 1.35; font-weight: 700; }
+.date { margin: 0; font-size: 13px; color: var(--muted); }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin: 0 0 12px; }
+.summary { border-color: var(--line-2); }
+.summary h2::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--pen); margin-right: 8px; vertical-align: .15em; }
+h2 { font-size: 17px; line-height: 1.5; margin: 0 0 8px; font-weight: 700; }
+h3 { font-size: 15px; line-height: 1.5; margin: 16px 0 4px; font-weight: 700; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 10px; padding-left: 1.3em; }
+li { margin: 0 0 6px; }
+li:last-child, p:last-child, ul:last-child, ol:last-child { margin-bottom: 0; }
+strong { font-weight: 700; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 4px 0 10px; }
+table:last-child { margin-bottom: 0; }
+th, td { border-top: 1px solid var(--line); padding: 8px 6px; text-align: left; vertical-align: top; }
+th { width: 36%; font-weight: 700; }
+@media (max-width: 520px) { th, td { display: block; width: auto; } th { padding-bottom: 0; } td { border-top: 0; padding-top: 2px; } }
+a { color: var(--pen); text-underline-offset: 3px; }
+.small { font-size: 13px; color: var(--muted); }
+footer { display: flex; justify-content: center; gap: 20px; font-size: 13px; margin-top: 20px; }

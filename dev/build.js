@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const vm = require('vm');
 const live = require('./livedata');
 
 const APP_ID = 'senjutsu-master'; // キャッシュ名の接頭辞
@@ -151,7 +152,16 @@ fs.writeFileSync(path.join(ROOT, 'sw.js'), sw);
 //    どの場所からも /fonts/… のように同じものを指す。
 //    line.js は usedChars() に入れていない（いまは画面に文字を出さない）。画面に出す文を足すときは、usedChars() に入れてフォントを作り直す。
 const LINE_OUT = path.join(__dirname, 'out', 'line');
-const LINE_JS = `\n${read('line.js').trim()}\n`;
+// お問い合わせ（Google フォーム「戦術マスター お問い合わせ」。2026-11-20 にオーナーが作成）の URL。プライバシーポリシー・利用規約の
+// ページと、LINE版の「記録の引っこし」のリンクに入る。Cloudflare Pages のビルドは環境変数なしで動くので、ここに書く（秘密ではない）。
+// 空にするとページを作らず、リンクも出さない（ためしは CONTACT= node dev/build.js）。?usp=… などははずす
+const CONTACT = (process.env.CONTACT ?? 'https://forms.gle/X1okQbzCw5MhWdDb9').split('?')[0];
+if (CONTACT && !/^https:\/\/(forms\.gle\/[A-Za-z0-9]+|docs\.google\.com\/forms\/d\/e\/[A-Za-z0-9_-]+\/viewform)$/.test(CONTACT)) {
+  throw new Error('CONTACT は Google フォームの URL（https://forms.gle/… か https://docs.google.com/forms/d/e/…/viewform）にしてください');
+}
+const lineSrc = `\n${read('line.js').trim()}\n`;
+if (lineSrc.split("'__CONTACT__'").length !== 2) throw new Error("line.js に '__CONTACT__' がちょうど1つ必要です");
+const LINE_JS = lineSrc.replace("'__CONTACT__'", JSON.stringify(CONTACT));
 if (LINE_JS.toLowerCase().includes('</script')) throw new Error('line.js に </script が含まれています');
 const lineHead = headPart.split('url("fonts/').join('url("/fonts/');
 if (lineHead.split('url("/fonts/').length - 1 !== FONTS.length) throw new Error('LINE版: page.html のフォントの数が fonts/ と合いません');
@@ -208,6 +218,33 @@ fs.cpSync(path.join(ROOT, 'licenses'), path.join(LINE_OUT, 'licenses'), { recurs
 fs.mkdirSync(path.join(LINE_OUT, 'share'));
 fs.copyFileSync(path.join(__dirname, 'icons', 'share-hero.png'), path.join(LINE_OUT, 'share', 'hero.png'));
 fs.copyFileSync(path.join(ROOT, 'icon-192.png'), path.join(LINE_OUT, 'share', 'icon.png'));
+// プライバシーポリシー・利用規約（LINE Developers の「チャネル基本設定」に入れる URL: https://<このサイト>/privacy.html・/terms.html。
+// 変えると認証のあとは再審査）。もとは dev/legal/。外から何も読まない静かなページ（script なし。CSP はページの meta）。
+// 文字は端末のフォント（アプリのフォントはアプリの文字だけのサブセット）なので、改行の位置はここで決める: アプリの phrase() と同じく
+// BudouX で文節の間に <wbr> を入れ、CSS の keep-all で文節の中では折らない（助詞などで始まる文節は前につなぎ、閉じ括弧の直後は U+2060）
+if (CONTACT) {
+  const bx = { window: {} }; vm.createContext(bx);
+  vm.runInContext(read('budoux.js'), bx);
+  const JA = /[぀-ヿ㐀-鿿]/;
+  const NO_START = /^[をにがはのへてゃゅょぁぃぅぇぉっァィゥェォッャュョー、。・）」』，．：！？]/;
+  const KEEP = ['お問い合わせ', '非公式', '結果画面', '地方裁判所']; // BudouX が途中で分ける語
+  const wbr = t => {
+    const ps = bx.window.BudouX.parse(t).reduce((a, p) => { if (a.length && NO_START.test(p)) a[a.length - 1] += p; else a.push(p); return a; }, []);
+    let s = ps.join('\u0000');
+    for (const w of KEEP) s = s.replace(new RegExp([...w].join('\u0000?'), 'g'), w);
+    return s.split('\u0000').map(p => p.replace(/([）」』)])(?=[^）」』)、。，．・：！？])/g, '$1⁠')).join('<wbr>');
+  };
+  const css = fs.readFileSync(path.join(__dirname, 'legal', 'legal.css'), 'utf8').trim();
+  for (const name of ['privacy', 'terms']) {
+    const src = fs.readFileSync(path.join(__dirname, 'legal', `${name}.html`), 'utf8');
+    const [head, body] = src.split('<body>');
+    if (!body || !head.includes('__CSS__') || !body.includes('__CONTACT__')) throw new Error(`dev/legal/${name}.html の形が違います`);
+    // 自分で書いたページの文字の部分だけに <wbr> を入れる（タグの中は変えない）
+    const out = head.replace('__CSS__', css) + '<body>' + body.split(/(<[^>]*>)/).map(s => (s.startsWith('<') || !JA.test(s) ? s : wbr(s))).join('').split('__CONTACT__').join(CONTACT);
+    if (/__[A-Z]+__/.test(out)) throw new Error(`dev/legal/${name}.html に置きかえていない印があります`);
+    fs.writeFileSync(path.join(LINE_OUT, `${name}.html`), out);
+  }
+}
 // Cloudflare Pages の HTTP ヘッダー（meta の CSP では書けないもの）。ほかのサイトの枠（iframe）に入れさせない。
 // うちのこ日和と同じく、まず開発用だけに入れ、2026-11-20 に iPhone の LINE で開発用がひらける（ready / LINE）のを確かめてから全部へ広げた
 fs.writeFileSync(path.join(LINE_OUT, '_headers'), `/*

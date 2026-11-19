@@ -73,14 +73,19 @@ def save(im, size, name):
     im.resize((size, size), Image.LANCZOS).save(ROOT / name, optimize=True)
 
 
-with sync_playwright() as p:
-    browser = p.chromium.launch()
-    page = browser.new_page(viewport={'width': 1024, 'height': 1024})
-    full = render(page, 1.0)
-    save(full, 512, 'icon-512.png')
-    save(full, 192, 'icon-192.png')
-    save(full, 180, 'apple-touch-icon.png')
-    save(full, 32, 'favicon-32.png')
-    save(render(page, 0.8), 512, 'icon-maskable-512.png')
-    browser.close()
-print('icons written to', ROOT)
+def main():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={'width': 1024, 'height': 1024})
+        full = render(page, 1.0)
+        save(full, 512, 'icon-512.png')
+        save(full, 192, 'icon-192.png')
+        save(full, 180, 'apple-touch-icon.png')
+        save(full, 32, 'favicon-32.png')
+        save(render(page, 0.8), 512, 'icon-maskable-512.png')
+        browser.close()
+    print('icons written to', ROOT)
+
+
+if __name__ == '__main__':  # make_line_icon.py が字形と色を読み込むときは描かない
+    main()

@@ -79,6 +79,8 @@ with sync_playwright() as p:
     ctx, pg = page(b, {'basic': 10, 'coach': 6})
     pg.click('#moveOpen')
     code = pg.inner_text('#mvOut')
+    # ポリシー・規約のリンクと「この端末の記録を消す」は LINE で開くページだけ（ホーム画面のアプリには出さない）
+    ok('LINE のリンクがない', not pg.query_selector('[data-doc]') and not pg.query_selector('#mvDel'))
     ok('コードの形', code.startswith('SENJUTSU1:basic=10,coach=6:') and len(code) == len('SENJUTSU1:basic=10,coach=6:') + 4, code)
     with pg.expect_download() as d:
         pg.click('#mvSave')

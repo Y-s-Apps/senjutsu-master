@@ -697,12 +697,15 @@
     return 'selected';
   }
 
+  const MOVE_HELLO = '読み込んだ記録は、いまより高いレベルだけを更新します。';
   let moveReturn = null;
   function openMove() {
     const best = loadBest(), has = Object.keys(best).length > 0, code = makeCode(best);
     // LINE の中でファイルを保存できない（共有シートが使えない）ときは「ファイルに保存」を出さず、コードのコピーだけにする
     const ln = LN(), inLine = !!(ln && typeof ln.inLine === 'function' && ln.inLine());
     const fileOk = !inLine || (typeof ln.canSaveFile === 'function' && ln.canSaveFile());
+    // LINE で開くページだけ: プライバシーポリシー・利用規約・お問い合わせ（line.js がひらく）と「この端末の記録を消す」をいちばん下に
+    const docsOn = !!(ln && typeof ln.docsOn === 'function' && ln.docsOn());
     const sub = inLine
       ? `自己ベストは、この端末の LINE の中だけに保存されています（ホーム画面のアプリや Safari とは別）。別の端末やホーム画面のアプリへは、${fileOk ? 'ファイルか' : ''}コードで移せます。`
       : '自己ベストは、いま開いているアプリの中だけに保存されています（ホーム画面のアプリと Safari も別）。別の端末や新しい URL へは、ファイルかコードで移せます。';
@@ -719,7 +722,9 @@
         <h3 class="sheet-h">受け取る</h3>
         <div class="mv-row"><label class="btn ghost mv-file">ファイルを選ぶ<input type="file" id="mvFile" accept=".txt,text/plain"></label></div>
         <div class="mv-row"><input class="mv-code" id="mvIn" maxlength="${MOVE_MAX}" placeholder="コードを貼り付け" aria-label="受け取るコード" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"><button class="btn ghost" id="mvTake">読み込む</button></div>
-        <p class="mv-msg" id="mvMsg" role="status" aria-live="polite">読み込んだ記録は、いまより高いレベルだけを更新します。</p>
+        <p class="mv-msg" id="mvMsg" role="status" aria-live="polite">${MOVE_HELLO}</p>
+        ${ln ? `<div class="mv-foot">${docsOn ? `<p class="mv-docs"><button class="link" data-doc="privacy">プライバシーポリシー</button><button class="link" data-doc="terms">利用規約</button><button class="link" data-doc="contact">お問い合わせ</button></p>` : ''}
+          <p class="mv-del-row" id="mvDelRow"><button class="link mv-del" id="mvDel">この端末の記録を消す</button></p></div>` : ''}
       </section>
     </div>`);
     const sh = document.getElementById('mv');
@@ -764,8 +769,31 @@
       if (file.size > MOVE_MAX) return msg(MOVE_ERR.big);
       try { take(await file.text()); } catch (err) { msg(MOVE_ERR.noprefix); }
     });
+    sh.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => ln.openDoc(b.dataset.doc)));
+    // この端末の記録を消す（LINE で開くページだけ。サーバーがないので、これがプライバシーポリシーに書いた「消し方」）。消す前にもう一度たずねる
+    const delRow = sh.querySelector('#mvDelRow');
+    if (delRow) delRow.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.id === 'mvDel') {
+        delRow.innerHTML = '<button class="btn mv-del-yes" id="mvDelYes">消す</button><button class="btn ghost" id="mvDelNo">やめる</button>';
+        msg('この端末の記録をすべて消しますか。もとに戻せません。');
+        return sh.querySelector('#mvDelNo').focus();
+      }
+      if (b.id === 'mvDelYes') {
+        clearAll();
+        sh.querySelector('#mvNow').innerHTML = bestLine({});
+        sh.querySelector('#mvOut').textContent = '';
+        if (save) save.disabled = true;
+        sh.querySelector('#mvCopy').disabled = true;
+      }
+      delRow.innerHTML = '<button class="link mv-del" id="mvDel">この端末の記録を消す</button>';
+      msg(b.id === 'mvDelYes' ? 'この端末の記録を消しました。' : MOVE_HELLO);
+      sh.querySelector('#mvDel').focus();
+    });
     sh.querySelector(has ? (save ? '#mvSave' : '#mvCopy') : '#mvFile').focus();
   }
+  // この端末の戦術マスターの記録をすべて消す（自己ベスト・出題の履歴・前節の一戦の自己ベスト・お気に入りクラブ）
+  const clearAll = () => { for (const k of [KEY, HKEY, LKEY, FAV_KEY]) { try { localStorage.removeItem(k); } catch (e) { /* 消せない環境では何もしない */ } } };
   function closeMove() {
     const sh = document.getElementById('mv'); if (!sh) return;
     sh.remove();
