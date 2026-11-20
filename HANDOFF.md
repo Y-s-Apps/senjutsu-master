@@ -326,6 +326,13 @@ CLAUDE.md の「セキュリティ診断」の手順で ①コード ②外部�
   - オーナーの確認（2026-11-20、スマホのスクショ）: 組織のリポジトリは5つのまま。LINE Developers の Scope は openid だけ。チャネルのメンバーはオーナーとオーナーのテスト用アカウントの2つだけ（メールアドレスはここに書かない）
   - 別のモデルでの全体診断: オーナーが「必須」と決めた。Opus 5.5 で、新しいチャットで、これまでの診断の記録を見ずに初めて見る立場で行う（このチャットも Opus 5.5 なので、モデルは同じで、前の文脈を持たないことが「別の目」になる）。リリースはその診断のあと
 
+- 2026-11-20（夕方）: セキュリティ診断（リリース前の全体診断。Opus 5.5・新しいチャット・これまでの記録を見ずに初めて見る立場で。対象 リポジトリ全体（d47cddb、dev/ の道具とテストも）と pages.dev・github.io・アーティファクト・定期タスク）
+  - 見つけたこと（重さの順）: (1) 高: 定期タスク「前節の一戦の問題追加」に、使わない Supabase と Claude Docs の接続がついていた（タスクを作ると全部の接続が自動で入る）。承認なしで Web の記事を読んで動くので、記事に仕込まれた指示に乗せられると、Supabase（うちのこ日和のサーバー）や計画書の Docs に届く道があった → オーナーがタスクの Connectors から外す（未。§5）。(2) 中: 定期タスクの push はそのまま公開（Pages・LINE版・アーティファクト）に出るのに、決まった場所の外の変更を止める仕組みがなかった → `audit.py --auto-live` を足し、タスクの指示の手順5と push の直前で流すようにした（c742203。タスクの設定と §1 の文も同じに更新）。(3) 低: 脆弱性の知らせを非公開で受ける窓口がなかった（Private vulnerability reporting がオフ・Issues は公開）→ `.github/SECURITY.md` を足した（9b5caa8）。オンにするのはオーナー（未。§5）
+  - 直さないこと（情報）: LINE版の CSP の script-src は static.line-scdn.net 全体（パスで絞れるが、iPhone での確かめ直しが要るわりに効果が小さい）。Cloudflare の古いデプロイ（`<hash>.senjutsu-master.pages.dev`）は公開のまま残る（別のオリジンなので、記録や LINE のログインは共有しない。閉じたければ Cloudflare のプロジェクトの Settings → General → Enable access policy）。Cloudflare は全部の応答に CORS `*` を付ける（公開の静的ファイルだけなので影響なし）
+  - 問題なし: ① innerHTML の15か所はどれも esc() か決まった文字列・数値。保存データ4つは読むときに知っている値だけ残す。記録の引っこしは大きさ・形・確認用の文字を確かめる。シェアのメッセージはコースの名前・点数・ベストの数だけ。openDoc は決まった URL だけ。消すのは4つのキーだけ。ポリシーと実際の動きが合う。② CSP（ホーム画面版は埋め込みのハッシュだけ、LINE版は決まったホストだけ）。LIFF SDK はエッジパスで v2.32.0（CVE-2026-112148 は v2.31.1 で修正済み）。BudouX 0.6.4 に安全面の知らせなし。フォントは SHA-256 で固定。③ SW は自分のオリジン・GET・正常な応答だけ。④ 全履歴に秘密の値・個人のアカウント名なし、作者は Claude だけ。⑤ 公開・Wiki と Projects はオフ・secret scanning と push protection はオン・ruleset（削除と強制 push の禁止）・ブランチは main だけ。dev/ の道具とテストは 127.0.0.1 だけで動き、外から取るのは SHA-256 を確かめるフォントだけ。⑥ アーティファクトは自分だけ・downloads だけ・5914 行で中身も一致
+  - 確かめられなかったこと: pages.dev のヘッダーと中身のハッシュ（この環境のシェルはプロキシに止められ、Chrome・パソコンにもつながらなかった）。Cloudflare のチェックは d47cddb のデプロイ成功、`/dev/build.js` は 404 になるのを WebFetch で確かめた
+  - テスト: check.js・logic.js・fit.py・move.py・offline.py・line.py・audit.py（NG 0）。アプリの中身は変えていないので、アーティファクトの publish と iPhone の LINE での確かめ直しはいらない
+
 ## 5. やり残し・アイデア
 - **LINE版**（計画書 §1 の表。進める順番は計画書 8章）。いまは7（セキュリティ診断）まで。次は8（未認証でリリース）:
   - 済み（2026-11-19〜20）: オーナーが Cloudflare Pages（https://senjutsu-master.pages.dev/ 。iPhone の Safari で本番用と開発用がひらけるのを確認）と LINE Developers のチャネル「戦術マスター」、開発用のエンドポイントURL、Tester を用意。3つの LIFF ID を `line.js` に入れた。Cloudflare の「Create application」は、何も選ばないと Workers の画面（Deploy command・API token の欄がある）になる。Pages は最初の画面の下の「Looking to deploy Pages? Get started」から（Workers だと URL にアカウントのサブドメインが入るので使わない）。作った直後は Deployments に「This project is disconnected from your Git account」と出て、2回目の push（a6a5237）が作られなかった。GitHub の組織の設定（`https://github.com/organizations/Y-s-Apps/settings/installations` →「Cloudflare Workers and Pages」の Configure → Repository access）で、Only select repositories に senjutsu-master が入っていなかったので足すと消えた。組織にリポジトリを足して Cloudflare につなぐときは、ここにも足す
@@ -338,7 +345,12 @@ CLAUDE.md の「セキュリティ診断」の手順で ①コード ②外部�
   - 済み（2026-11-20）: iPhone の LINE（Tester）の開発用で、記録の引っこしのいちばん下の「プライバシーポリシー」「利用規約」「お問い合わせ」が LINE のブラウザで上にひらき（上にページの題名と ×）、「この端末の記録を消す」で「消す／やめる」が出るのを、オーナーのスクショで確かめた
   - 済み（2026-11-20）: セキュリティ診断に LINE版を足して流した。404.html を足した（§4 の 2026-11-20（3））
   - 済み（2026-11-20）: オーナーの確認。Code scanning に1件 Open（line.py の正規表現）があったので直した（c1382c8。CodeQL のあと 0 Open・4 Closed になったのを、オーナーのスクショで確かめた）。リポジトリは5つ、Scope は openid だけ、チャネルのメンバーはオーナーとテスト用アカウントだけ
-  - 次: リリースの前の全体診断（オーナーが必須と決めた。Opus 5.5・新しいチャット・これまでの診断の記録を見ずに。依頼文は §1 の「全体診断の依頼」）→ そのあと8（未認証でリリース）
+  - 済み（2026-11-20 夕方）: リリースの前の全体診断（§4）。オーナーの確認が4つ残っている（リリースのチャットのはじめに確かめる）:
+    - A: 定期タスク「前節の一戦の問題追加」の接続から Supabase と Claude_Docs を外す（https://claude.ai/code/scheduled →タスク→右上の鉛筆→「Connectors」。Claude_Code_Remote は残す）。外したかは list_triggers の mcp_connections で読める
+    - B: Private vulnerability reporting をオンにする（https://github.com/Y-s-Apps/senjutsu-master/settings/security_analysis ）。オンかは `gh api repos/Y-s-Apps/senjutsu-master/private-vulnerability-reporting` で読める
+    - C: https://github.com/Y-s-Apps/senjutsu-master/security の「Code scanning」が 0 Open か（c742203・9b5caa8 の分析のあと）
+    - D: LINE Developers の「ウェブアプリ設定」の Scope が openid だけか、「権限設定」のメンバーがオーナーとテスト用だけか
+  - 次: 8（未認証でリリース）
   - リリースのときに見る: 利用規約からリンクしている `/licenses/README.md` は Cloudflare が `text/markdown` で返す。LINE のブラウザでそのまま読めるか（ダウンロードにならないか）を見る。読めなければ HTML にする
   - ポリシーに「大事な変更は本サービスの中でも知らせる」と書いた。アプリの中のおしらせの仕組みはまだないので、取りあつかう情報を変えるとき（広告・課金・サーバーを入れるときなど）に作る
   - 認証審査の前に: 「審査のための補足資料」（うちのこ日和の docs/PROJECT.md 10章が見本）を作る、商標をもう一度確かめる

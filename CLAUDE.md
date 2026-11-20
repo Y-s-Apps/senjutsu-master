@@ -174,7 +174,7 @@ LINE版（LINEミニアプリ、サーバーなし）を準備中（2026-11-19�
    - ② 新しい依存（ライブラリ・フォント・画像）がないか。入れたら版を固定し、ライセンス本文を `licenses/` に。同梱の BudouX の新しい版に安全面の修正がないかをウェブで調べる。
    - ③ `build.js` の sw の部分が変わったか（変わったら offline.py の場面が足りているか）。
    - ④ 新しく公開するファイル・HANDOFF・CLAUDE.md・コミットメッセージに、個人のアカウント名・名前の候補・実在の個人の情報・秘密の値がないか。audit.py が探せるのは今のアカウント名（`gh api user`）だけなので、旧名を確かめたいときはユーザーに聞いて環境変数 `AUDIT_NAMES` で渡す（ファイルには書かない）。報告にも名前は書かず、件数だけにする。
-   - ⑤ 組織にリポジトリが増えていたら、そのリポジトリにも ruleset と Wiki・Projects のオフが要る（組織全体の ruleset は有料プランのみ）。
+   - ⑤ 組織にリポジトリが増えていたら、そのリポジトリにも ruleset と Wiki・Projects のオフが要る（組織全体の ruleset は有料プランのみ）。定期タスク「前節の一戦の問題追加」の接続（list_triggers の mcp_connections）が Claude_Code_Remote だけか、指示の手順5と push の前に `audit.py --auto-live` があるかも見る。
    - LINE版: line.js が LINE の ID・プロフィール・トークンを取る API（`getProfile`・`getIDToken`・`getAccessToken` など）を呼んでいないか、シェアのメッセージに入るものがコースの名前・点数・ベストの数だけか、`openDoc` がひらくのが決まった URL だけか、「この端末の記録を消す」が4つのキーだけか、ポリシーに書いたこと（CLAUDE.md「LINE版」）と実際の動きが合っているか。
 6. ユーザーに確かめてもらう: https://github.com/Y-s-Apps/senjutsu-master/security の「Code scanning」が 0 Open か（この環境では code scanning・Dependabot の指摘、組織の設定、Pages の設定は API で読めない）。LINE版を変えたときは、LINE Developers の「ウェブアプリ設定」の Scope が openid だけか、「権限設定」にオーナーのほかの人がいないかも。push のあと CodeQL が終わるまで数分かかる。テストや道具の script（`dev/`）も分析される。HTML は正規表現で読まず `html.parser` などを使う（2026-11-01、audit.py が正規表現で script タグを探していて「Bad HTML filtering regexp」が2件出た。2026-11-20 に line.py でも1件出たので、audit.py が dev/ の道具とテストの正規表現にタグがないかも見る）。Code scanning の指摘はこの環境の API では読めないので、オーナーの確認で見つかる。
 7. 直す: 1項目ずつ、直す → テスト → push → アーティファクト。履歴の書き換え・リポジトリの作り直し・公開範囲の変更など元に戻せないものは、選択肢を出してユーザーに決めてもらう。ブランチは作らない（このチャットの接続では消せない）。
