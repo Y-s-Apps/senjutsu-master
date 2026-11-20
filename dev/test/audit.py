@@ -7,6 +7,8 @@
               フォントを埋め込んで 1MiB をこえ、read で1つのファイルに保存できないので、行数と publish の時刻
               （version の前の数字）が dev/dist/artifact.html と最後のコミットに合うかを見る。中身は数行を read で読みくらべる
   --since     このコミットから HEAD までに変わったファイルを一覧にする（前回の診断の続きを読むとき）
+  --auto-live 定期タスク「前節の一戦の問題追加」用。origin/main から変わったファイル（コミット前・まだ push していないものも）が、
+              新しい節の JSON・日程（schedule.json）・ビルドの生成物・フォントだけかを確かめ、ほかが変わっていれば NG（push しない）
   環境変数 AUDIT_NAMES  探したい名前をカンマ区切りで（ユーザーに聞いた旧名など。ファイルには書かない）
 
 個人のアカウント名は GitHub の API（gh api user）から取り、画面には件数だけを出す（名前は出さない）。
@@ -441,8 +443,40 @@ def audit_github():
     say('読めない', 'code scanning・Dependabot の指摘と組織の設定はこの環境では読めない。ユーザーに https://github.com/' + REPO + '/security の「Code scanning」が 0 Open かを見てもらう')
 
 
+# ---- 定期タスク（前節の一戦の自動追加）の変更の範囲 --------------------------------
+# タスクは人が見ずに Web の記事を読んで動き、push はそのまま公開（Pages・LINE版・アーティファクト）に出る。
+# 記事に仕込まれた指示などで、決まった場所の外を変えていたら push の前に止める（タスクの手順で --auto-live をつけて流す）。
+AUTO_GENERATED = {'index.html', 'sw.js', 'dev/dist/artifact.html', 'dev/fonts/chars.txt'}
+AUTO_FONT = re.compile(r'fonts/[a-z0-9-]+\.woff2')
+AUTO_ROUND = re.compile(r'dev/src/live/[a-z0-9]+-\d{4}/\d+\.json')
+AUTO_SCHEDULE = re.compile(r'dev/src/live/[a-z0-9]+-\d{4}/schedule\.json')
+
+
+def audit_auto_live():
+    section('定期タスク（前節の一戦の自動追加）の変更の範囲（origin/main とのちがい）')
+    if subprocess.run(['git', 'rev-parse', '--verify', '-q', 'origin/main'], cwd=ROOT, capture_output=True).returncode:
+        return say('NG', 'origin/main が見つからないので、変えた場所を確かめられない（push しない）')
+    changes = []  # (状態, パス)。A=足した M=変えた D=消した（名前の変更は消して足したものとして見る）
+    for line in run('git', 'diff', '--name-status', '--no-renames', 'origin/main').decode().splitlines():
+        st, path = line.split('\t', 1)
+        changes.append((st[0], path))
+    for path in run('git', 'ls-files', '--others', '--exclude-standard').decode().splitlines():
+        changes.append(('A', path))
+    bad = []
+    for st, path in changes:
+        ok = ((path in AUTO_GENERATED and st == 'M') or (AUTO_FONT.fullmatch(path) and st in 'AM')
+              or (AUTO_ROUND.fullmatch(path) and st == 'A') or (AUTO_SCHEDULE.fullmatch(path) and st == 'M'))
+        if not ok:
+            bad.append(f'{st} {path}')
+    if bad:
+        say('NG', '自動追加で変えてよい場所の外が変わっている（push しない。人に知らせる）: ' + ', '.join(bad[:20]) + (' ほか' if len(bad) > 20 else ''))
+    else:
+        say('OK', f'変えたのは {len(changes)} ファイルで、どれも決まった場所（新しい節の JSON・日程・ビルドの生成物・フォント）')
+
+
 def main():
     args = sys.argv[1:]
+    auto_live = '--auto-live' in args
     art = args[args.index('--artifact') + 1] if '--artifact' in args else None
     meta = args[args.index('--artifact-meta') + 1] if '--artifact-meta' in args else None
     since = args[args.index('--since') + 1] if '--since' in args else None
@@ -451,6 +485,8 @@ def main():
         section(f'前回（{since}）からの変更')
         print(run('git', 'diff', '--stat', f'{since}..HEAD').decode().rstrip() or '（変更なし）')
         print(run('git', 'log', '--format=  %h %s', f'{since}..HEAD').decode().rstrip())
+    if auto_live:
+        audit_auto_live()
     audit_code()
     audit_external()
     audit_sw()
