@@ -346,7 +346,7 @@ CLAUDE.md の「セキュリティ診断」の手順で ①コード ②外部�
   - 済み（2026-11-20）: セキュリティ診断に LINE版を足して流した。404.html を足した（§4 の 2026-11-20（3））
   - 済み（2026-11-20）: オーナーの確認。Code scanning に1件 Open（line.py の正規表現）があったので直した（c1382c8。CodeQL のあと 0 Open・4 Closed になったのを、オーナーのスクショで確かめた）。リポジトリは5つ、Scope は openid だけ、チャネルのメンバーはオーナーとテスト用アカウントだけ
   - 済み（2026-11-20 夕方）: リリースの前の全体診断（§4）。オーナーの確認が4つ残っている（リリースのチャットのはじめに確かめる）:
-    - A: 定期タスク「前節の一戦の問題追加」の接続から Supabase と Claude_Docs を外す（https://claude.ai/code/scheduled →タスク→右上の鉛筆→「Connectors」。Claude_Code_Remote は残す）。外したかは list_triggers の mcp_connections で読める
+    - A: 定期タスク「前節の一戦の問題追加」の接続から Supabase と Claude_Docs を外す（編集画面の画面には Higgsfield も出ていたので、それも外す。Claude_Code_Remote は残す）。claude.ai のスケジュール済みタスク →タスク→上の「⌄」→編集→「詳細設定」→「コネクタ」。スマホではコネクタの欄が見るだけで外せなかった（2026-11-21）ので、パソコンで。**外せるまでタスクは止めている**（2026-11-21 0:07 に有効をオフ。11/22 23:30 にこのチャットから通知）。外したかは list_triggers の mcp_connections で読める。外せたら有効をオンに戻し、止めていたあいだの節を手で足すか決める
     - B: Private vulnerability reporting をオンにする（https://github.com/Y-s-Apps/senjutsu-master/settings/security_analysis ）。オンかは `gh api repos/Y-s-Apps/senjutsu-master/private-vulnerability-reporting` で読める
     - C: https://github.com/Y-s-Apps/senjutsu-master/security の「Code scanning」が 0 Open か（c742203・9b5caa8 の分析のあと）
     - D: LINE Developers の「ウェブアプリ設定」の Scope が openid だけか、「権限設定」のメンバーがオーナーとテスト用だけか
