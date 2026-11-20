@@ -126,6 +126,22 @@ def audit_code():
                 sinks.append(f'{os.path.basename(f)}:{i}')
     say('要確認', f'HTML を差し込む場所 {len(sinks)} か所（{", ".join(sinks)}）。新しく増えた・変わった場所の値が esc() を通るか、数値・決まった文字列だけかを読む')
 
+    # 道具とテスト（dev/ の .py・.js）も CodeQL が見る。script・style のタグを正規表現で探すと「Bad HTML filtering regexp」（High）になる
+    # （2026-11-01 に audit.py で2件、2026-11-20 に line.py で1件）。HTML は html.parser で読む
+    # この確かめ自身がタグの正規表現にならないよう、正規表現の中身（re.○○( の最初の文字列・RegExp( の文字列・/…/）を取り出し、タグは文字列で探す
+    pat = re.compile(r'''(?:\bre\.\w+\(\s*r?|RegExp\(\s*)(['"])(.*?)\1|[(=,:]\s*/((?:[^/\\\n]|\\.)+)/''')
+    tags = ('<' + 'script', '</' + 'script', '<' + 'style', '</' + 'style')
+    has_tag = lambda line: any(any(t in (m.group(2) or m.group(3) or '').lower() for t in tags) for m in pat.finditer(line))
+    tagre = []
+    for d, _, names in os.walk(os.path.join(ROOT, 'dev')):
+        if any(x in d for x in ('node_modules', '.cache', os.path.join('dev', 'out'), os.path.join('dev', 'dist'))):
+            continue
+        for n in names:
+            if n.endswith(('.py', '.js')) and n != 'budoux.js':
+                f = os.path.relpath(os.path.join(d, n), ROOT)
+                tagre += [f'{f}:{i}' for i, line in enumerate(read(f).splitlines(), 1) if has_tag(line)]
+    say('NG' if tagre else 'OK', 'script・style のタグを正規表現で探すところ（CodeQL の Bad HTML filtering regexp）' + (': ' + ', '.join(tagre) if tagre else 'なし（dev/ の道具とテストも）'))
+
 
 # ---- ② 外部との通信・依存 ---------------------------------------------------
 def audit_external():

@@ -31,6 +31,7 @@ import shutil
 import sys
 import tempfile
 import threading
+from html.parser import HTMLParser
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -59,9 +60,35 @@ def serve(directory):
     return srv, f'http://127.0.0.1:{srv.server_port}'
 
 
+class Scripts(HTMLParser):
+    """埋め込みの script の中身を取り出す（正規表現で HTML を読まない。CodeQL の「Bad HTML filtering regexp」になる。audit.py の Page と同じ）"""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=False)
+        self.found, self._in = [], None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'script' and not attrs:
+            self._in = []
+
+    def handle_data(self, data):
+        if self._in is not None:
+            self._in.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == 'script' and self._in is not None:
+            self.found.append(''.join(self._in))
+            self._in = None
+
+
 def without_ids(html):
     """LIFF ID とお問い合わせ先（CONTACT）を空にした版を作る（line.js の中身が変わるので、CSP のハッシュも作り直す）"""
-    old = re.findall(r'<script>(.*?)</script>', html, flags=re.S)[-1]
+    sp = Scripts()
+    sp.feed(html)
+    sp.close()
+    old = sp.found[-1]  # いちばん最後の埋め込みが line.js
+    if old not in html:
+        fails.append(('csp', 'line.js の埋め込みを取り出せない'))
     new = re.sub(r"liffIds: \{[^}]*\}", "liffIds: { prod: '', review: '', dev: '' }", old)
     new = re.sub(r'const CONTACT = "[^"]*";', 'const CONTACT = "";', new)
     h = lambda s: "'sha256-" + base64.b64encode(hashlib.sha256(s.encode('utf-8')).digest()).decode() + "'"
